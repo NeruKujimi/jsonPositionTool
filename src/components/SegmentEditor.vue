@@ -77,7 +77,6 @@ function onLinkToggle(event: Event) {
 </template>
 
 <style lang="scss" scoped>
-@use '@/styles/variables' as *;
 @use '@/styles/mixins' as *;
 
 .segment {
