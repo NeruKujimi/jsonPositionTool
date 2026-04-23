@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import type { Segment } from '@/types'
 import { getAllEaseNames } from '@/registry/easing'
 import EasePreview from './EasePreview.vue'
+import CoordinatePicker from './CoordinatePicker.vue'
 
 const props = defineProps<{
   segment: Segment
@@ -18,6 +19,9 @@ const emit = defineEmits<{
 
 const easeOptions = getAllEaseNames()
 const showPreview = ref(false)
+const showCoordinatePicker = ref(false)
+const currentCoordinateField = ref<'startX' | 'startY' | 'endX' | 'endY' | null>(null)
+const tempCoordinate = ref({ x: 0, y: 0 })
 
 const linkNote = computed(() =>
   props.segment.linked && !props.isFirst
@@ -42,6 +46,35 @@ function onLinkToggle(event: Event) {
 function togglePreview() {
   showPreview.value = !showPreview.value
 }
+
+function openCoordinatePicker(field: 'startX' | 'startY' | 'endX' | 'endY') {
+  currentCoordinateField.value = field
+  if (field === 'startX' || field === 'startY') {
+    tempCoordinate.value = { x: props.segment.startX, y: props.segment.startY }
+  } else {
+    tempCoordinate.value = { x: props.segment.endX, y: props.segment.endY }
+  }
+  showCoordinatePicker.value = true
+}
+
+function handleCoordinateUpdate(value: { x: number, y: number }) {
+  if (!currentCoordinateField.value) return
+  
+  if (currentCoordinateField.value === 'startX') {
+    emit('update', props.segment.id, 'startX', value.x)
+  } else if (currentCoordinateField.value === 'startY') {
+    emit('update', props.segment.id, 'startY', value.y)
+  } else if (currentCoordinateField.value === 'endX') {
+    emit('update', props.segment.id, 'endX', value.x)
+  } else if (currentCoordinateField.value === 'endY') {
+    emit('update', props.segment.id, 'endY', value.y)
+  }
+}
+
+function handlePickerClose() {
+  showCoordinatePicker.value = false
+  currentCoordinateField.value = null
+}
 </script>
 
 <template>
@@ -58,15 +91,19 @@ function togglePreview() {
     </div>
     <div class="row">
       <label>Start X</label>
-      <input type="number" :value="segment.startX" :disabled="segment.linked && !isFirst" @input="onFieldInput('startX', $event)" />
+      <span class="coord-value">{{ segment.startX }}</span>
+      <button @click="openCoordinatePicker('startX')" class="coord-btn">选点</button>
       <label>Start Y</label>
-      <input type="number" :value="segment.startY" :disabled="segment.linked && !isFirst" @input="onFieldInput('startY', $event)" />
+      <span class="coord-value">{{ segment.startY }}</span>
+      <button @click="openCoordinatePicker('startY')" class="coord-btn">选点</button>
     </div>
     <div class="row">
       <label>End X</label>
-      <input type="number" :value="segment.endX" @input="onFieldInput('endX', $event)" />
+      <span class="coord-value">{{ segment.endX }}</span>
+      <button @click="openCoordinatePicker('endX')" class="coord-btn">选点</button>
       <label>End Y</label>
-      <input type="number" :value="segment.endY" @input="onFieldInput('endY', $event)" />
+      <span class="coord-value">{{ segment.endY }}</span>
+      <button @click="openCoordinatePicker('endY')" class="coord-btn">选点</button>
     </div>
     <div class="row">
       <label>Ease</label>
@@ -85,6 +122,12 @@ function togglePreview() {
       <EasePreview :ease-name="segment.easeType" />
     </div>
     <div v-if="linkNote" class="seg-link">{{ linkNote }}</div>
+    <CoordinatePicker 
+      v-model="tempCoordinate" 
+      :visible="showCoordinatePicker"
+      @update:visible="handlePickerClose"
+      @update:modelValue="handleCoordinateUpdate"
+    />
   </div>
 </template>
 
@@ -182,6 +225,34 @@ function togglePreview() {
     color: white;
     border-color: $accent;
   }
+}
+
+.coord-btn {
+  padding: 2px 8px;
+  font-size: $font-size-xs;
+  background: $bg-primary;
+  color: $accent;
+  border: 1px solid $accent;
+  border-radius: $border-radius;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: $accent;
+    color: white;
+  }
+}
+
+.coord-value {
+  min-width: 50px;
+  padding: 2px 6px;
+  background: $bg-primary;
+  border: 1px solid $border;
+  border-radius: $border-radius;
+  color: $text-primary;
+  font-family: monospace;
+  font-size: $font-size-sm;
+  text-align: center;
 }
 
 .ease-preview-container {
