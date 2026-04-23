@@ -1,0 +1,46 @@
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin input-base {
+  background: $bg-primary;
+  border: 1px solid $border;
+  color: $text-primary;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $border-radius;
+  font-size: $font-size-base;
+  font-family: $font-sans;
+
+  &:focus {
+    border-color: $accent;
+    outline: none;
+  }
+}
+
+@mixin button-base {
+  padding: $spacing-sm $spacing-xl;
+  cursor: pointer;
+  background: $bg-tertiary;
+  color: $accent;
+  border: 1px solid $accent;
+  border-radius: $border-radius;
+  font-size: $font-size-base;
+  font-family: $font-sans;
+
+  &:hover {
+    background: $accent-hover;
+  }
+
+  &.active {
+    background: $accent;
+    color: $bg-primary;
+  }
+}
