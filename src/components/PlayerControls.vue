@@ -36,6 +36,7 @@ function onSliderInput(event: Event) {
 </template>
 
 <style lang="scss" scoped>
+@use '@/styles/variables' as *;
 @use '@/styles/mixins' as *;
 
 .controls {

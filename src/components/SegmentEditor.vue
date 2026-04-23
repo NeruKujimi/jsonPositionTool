@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { Segment } from '@/types'
 import { getAllEaseNames } from '@/registry/easing'
+import EasePreview from './EasePreview.vue'
 
 const props = defineProps<{
   segment: Segment
@@ -16,6 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const easeOptions = getAllEaseNames()
+const showPreview = ref(false)
 
 const linkNote = computed(() =>
   props.segment.linked && !props.isFirst
@@ -35,6 +37,10 @@ function onFieldInput(field: keyof Segment, event: Event) {
 function onLinkToggle(event: Event) {
   const target = event.target as HTMLInputElement
   emit('toggle-linked', props.segment.id, target.checked)
+}
+
+function togglePreview() {
+  showPreview.value = !showPreview.value
 }
 </script>
 
@@ -67,16 +73,23 @@ function onLinkToggle(event: Event) {
       <select :value="segment.easeType" @change="onFieldInput('easeType', $event)">
         <option v-for="name in easeOptions" :key="name" :value="name">{{ name }}</option>
       </select>
+      <button @click="togglePreview" class="preview-btn">
+        {{ showPreview ? 'Hide Preview' : 'Show Preview' }}
+      </button>
       <label class="link-label">
         <input type="checkbox" :checked="segment.linked" @change="onLinkToggle" />
         Link
       </label>
+    </div>
+    <div v-if="showPreview" class="ease-preview-container">
+      <EasePreview :ease-name="segment.easeType" />
     </div>
     <div v-if="linkNote" class="seg-link">{{ linkNote }}</div>
   </div>
 </template>
 
 <style lang="scss" scoped>
+@use '@/styles/variables' as *;
 @use '@/styles/mixins' as *;
 
 .segment {
@@ -152,6 +165,28 @@ function onLinkToggle(event: Event) {
   input[type="checkbox"] {
     width: auto;
   }
+}
+
+.preview-btn {
+  padding: 4px 10px;
+  font-size: $font-size-sm;
+  background: $bg-primary;
+  color: $text-primary;
+  border: 1px solid $border;
+  border-radius: $border-radius;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: $accent;
+    color: white;
+    border-color: $accent;
+  }
+}
+
+.ease-preview-container {
+  margin-top: $spacing-sm;
+  margin-left: 60px;
 }
 
 .seg-link {

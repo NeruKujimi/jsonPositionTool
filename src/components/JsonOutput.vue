@@ -26,6 +26,7 @@ function copyToClipboard() {
 </template>
 
 <style lang="scss" scoped>
+@use '@/styles/variables' as *;
 @use '@/styles/mixins' as *;
 
 .json-section {
