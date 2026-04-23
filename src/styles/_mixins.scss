@@ -1,0 +1,8 @@
+// 定义颜色变量
+$bg-primary: #409eff;
+
+// 基础输入样式混合器
+@mixin input-base() {
+  background: $bg-primary;
+  // 其他样式...
+}
