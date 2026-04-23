@@ -15,7 +15,7 @@ const canvasRef = ref<HTMLCanvasElement | null>(null)
 const precision = ref(0.5)
 const mouseX = ref(0)
 const mouseY = ref(0)
-const showCoordinates = ref(false)
+const showCoordinates = ref(true)
 
 const xMin = -8
 const xMax = 8
@@ -37,6 +37,17 @@ const snappedY = computed(() => {
   return Math.round(mouseY.value / precision.value) * precision.value
 })
 
+function getCanvasSize() {
+  const canvas = canvasRef.value
+  if (!canvas) return { width: 0, height: 0 }
+  
+  const rect = canvas.getBoundingClientRect()
+  return {
+    width: rect.width,
+    height: rect.height
+  }
+}
+
 function drawGrid() {
   const canvas = canvasRef.value
   if (!canvas) return
@@ -44,26 +55,30 @@ function drawGrid() {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   
-  const width = canvas.width
-  const height = canvas.height
+  const { width, height } = getCanvasSize()
   const padding = 30
+  
+  canvas.width = width
+  canvas.height = height
   
   ctx.clearRect(0, 0, width, height)
   
   const xRange = xMax - xMin
   const yRange = yMax - yMin
+  const centerX = width / 2
+  const centerY = height / 2
   
   ctx.strokeStyle = '#333'
   ctx.lineWidth = 1
   
   ctx.beginPath()
-  ctx.moveTo(padding, height - padding)
-  ctx.lineTo(width - padding, height - padding)
+  ctx.moveTo(padding, centerY)
+  ctx.lineTo(width - padding, centerY)
   ctx.stroke()
   
   ctx.beginPath()
-  ctx.moveTo(padding, padding)
-  ctx.lineTo(padding, height - padding)
+  ctx.moveTo(centerX, padding)
+  ctx.lineTo(centerX, height - padding)
   ctx.stroke()
   
   ctx.strokeStyle = '#222'
@@ -71,7 +86,7 @@ function drawGrid() {
   ctx.setLineDash([2, 2])
   
   for (let x = Math.ceil(xMin); x <= Math.floor(xMax); x++) {
-    const px = padding + ((x - xMin) / xRange) * (width - 2 * padding)
+    const px = centerX + (x / xRange) * (width - 2 * padding)
     ctx.beginPath()
     ctx.moveTo(px, padding)
     ctx.lineTo(px, height - padding)
@@ -79,7 +94,7 @@ function drawGrid() {
   }
   
   for (let y = Math.ceil(yMin); y <= Math.floor(yMax); y++) {
-    const py = height - padding - ((y - yMin) / yRange) * (height - 2 * padding)
+    const py = centerY - (y / yRange) * (height - 2 * padding)
     ctx.beginPath()
     ctx.moveTo(padding, py)
     ctx.lineTo(width - padding, py)
@@ -93,20 +108,20 @@ function drawGrid() {
   ctx.textAlign = 'center'
   
   for (let x = Math.ceil(xMin); x <= Math.floor(xMax); x++) {
-    const px = padding + ((x - xMin) / xRange) * (width - 2 * padding)
+    const px = centerX + (x / xRange) * (width - 2 * padding)
     ctx.fillText(x.toString(), px, height - padding + 12)
   }
   
   ctx.textAlign = 'right'
   for (let y = Math.ceil(yMin); y <= Math.floor(yMax); y++) {
-    const py = height - padding - ((y - yMin) / yRange) * (height - 2 * padding)
+    const py = centerY - (y / yRange) * (height - 2 * padding)
     ctx.fillText(y.toString(), padding - 5, py + 3)
   }
   
   const currentX = snappedX.value
   const currentY = snappedY.value
-  const dotX = padding + ((currentX - xMin) / xRange) * (width - 2 * padding)
-  const dotY = height - padding - ((currentY - yMin) / yRange) * (height - 2 * padding)
+  const dotX = centerX + (currentX / xRange) * (width - 2 * padding)
+  const dotY = centerY - (currentY / yRange) * (height - 2 * padding)
   
   ctx.fillStyle = '#ff6b6b'
   ctx.beginPath()
@@ -122,18 +137,19 @@ function handleMouseMove(event: MouseEvent) {
   const x = event.clientX - rect.left
   const y = event.clientY - rect.top
   
-  const width = canvas.width
-  const height = canvas.height
+  const { width, height } = getCanvasSize()
   const padding = 30
+  const centerX = width / 2
+  const centerY = height / 2
   
   const xRange = xMax - xMin
   const yRange = yMax - yMin
   
-  const normalizedX = (x - padding) / (width - 2 * padding)
-  const normalizedY = 1 - (y - padding) / (height - 2 * padding)
+  const normalizedX = (x - centerX) / (width - 2 * padding) * xRange
+  const normalizedY = (centerY - y) / (height - 2 * padding) * yRange
   
-  mouseX.value = xMin + normalizedX * xRange
-  mouseY.value = yMin + normalizedY * yRange
+  mouseX.value = normalizedX
+  mouseY.value = normalizedY
   
   mouseX.value = Math.max(xMin, Math.min(xMax, mouseX.value))
   mouseY.value = Math.max(yMin, Math.min(yMax, mouseY.value))
@@ -143,7 +159,6 @@ function handleMouseMove(event: MouseEvent) {
 }
 
 function handleMouseLeave() {
-  showCoordinates.value = false
   drawGrid()
 }
 
@@ -163,11 +178,6 @@ function handlePrecisionChange(event: Event) {
 }
 
 onMounted(() => {
-  const canvas = canvasRef.value
-  if (canvas) {
-    canvas.width = 650
-    canvas.height = 450
-  }
   drawGrid()
 })
 
@@ -202,7 +212,7 @@ onUnmounted(() => {
           @mouseleave="handleMouseLeave"
           @click="handleClick"
         ></canvas>
-        <div v-if="showCoordinates" class="coordinate-display">
+        <div class="coordinate-display">
           坐标: ({{ snappedX.toFixed(2) }}, {{ snappedY.toFixed(2) }})
         </div>
       </div>
@@ -230,9 +240,13 @@ onUnmounted(() => {
   background: $bg-secondary;
   border: 1px solid $border;
   border-radius: 8px;
-  width: 700px;
-  max-width: 95vw;
+  width: 70vw;
+  height: 70vh;
+  max-width: 700px;
+  max-height: 500px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .picker-header {
@@ -261,13 +275,16 @@ onUnmounted(() => {
 
 .picker-content {
   padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .precision-control {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
   color: $text-primary;
   font-size: $font-size-sm;
   
@@ -287,15 +304,14 @@ onUnmounted(() => {
 }
 
 .picker-canvas {
-  display: block;
-  margin: 0 auto;
+  flex: 1;
+  width: 100%;
   background: $bg-canvas;
   border-radius: 4px;
   cursor: crosshair;
 }
 
 .coordinate-display {
-  margin-top: 12px;
   padding: 8px;
   background: $bg-primary;
   border: 1px solid $border;

@@ -20,7 +20,7 @@ const emit = defineEmits<{
 const easeOptions = getAllEaseNames()
 const showPreview = ref(false)
 const showCoordinatePicker = ref(false)
-const currentCoordinateField = ref<'startX' | 'startY' | 'endX' | 'endY' | null>(null)
+const currentPickerTarget = ref<'start' | 'end' | null>(null)
 const tempCoordinate = ref({ x: 0, y: 0 })
 
 const linkNote = computed(() =>
@@ -47,9 +47,9 @@ function togglePreview() {
   showPreview.value = !showPreview.value
 }
 
-function openCoordinatePicker(field: 'startX' | 'startY' | 'endX' | 'endY') {
-  currentCoordinateField.value = field
-  if (field === 'startX' || field === 'startY') {
+function openCoordinatePicker(target: 'start' | 'end') {
+  currentPickerTarget.value = target
+  if (target === 'start') {
     tempCoordinate.value = { x: props.segment.startX, y: props.segment.startY }
   } else {
     tempCoordinate.value = { x: props.segment.endX, y: props.segment.endY }
@@ -58,22 +58,20 @@ function openCoordinatePicker(field: 'startX' | 'startY' | 'endX' | 'endY') {
 }
 
 function handleCoordinateUpdate(value: { x: number, y: number }) {
-  if (!currentCoordinateField.value) return
+  if (!currentPickerTarget.value) return
   
-  if (currentCoordinateField.value === 'startX') {
+  if (currentPickerTarget.value === 'start') {
     emit('update', props.segment.id, 'startX', value.x)
-  } else if (currentCoordinateField.value === 'startY') {
     emit('update', props.segment.id, 'startY', value.y)
-  } else if (currentCoordinateField.value === 'endX') {
+  } else {
     emit('update', props.segment.id, 'endX', value.x)
-  } else if (currentCoordinateField.value === 'endY') {
     emit('update', props.segment.id, 'endY', value.y)
   }
 }
 
 function handlePickerClose() {
   showCoordinatePicker.value = false
-  currentCoordinateField.value = null
+  currentPickerTarget.value = null
 }
 </script>
 
@@ -90,20 +88,12 @@ function handlePickerClose() {
       <input type="number" :value="segment.endTime" @input="onFieldInput('endTime', $event)" />
     </div>
     <div class="row">
-      <label>Start X</label>
-      <span class="coord-value">{{ segment.startX }}</span>
-      <button @click="openCoordinatePicker('startX')" class="coord-btn">选点</button>
-      <label>Start Y</label>
-      <span class="coord-value">{{ segment.startY }}</span>
-      <button @click="openCoordinatePicker('startY')" class="coord-btn">选点</button>
-    </div>
-    <div class="row">
-      <label>End X</label>
-      <span class="coord-value">{{ segment.endX }}</span>
-      <button @click="openCoordinatePicker('endX')" class="coord-btn">选点</button>
-      <label>End Y</label>
-      <span class="coord-value">{{ segment.endY }}</span>
-      <button @click="openCoordinatePicker('endY')" class="coord-btn">选点</button>
+      <label>Start</label>
+      <span class="coord-value">{{ segment.startX }}, {{ segment.startY }}</span>
+      <button @click="openCoordinatePicker('start')" class="coord-btn">选点</button>
+      <label>End</label>
+      <span class="coord-value">{{ segment.endX }}, {{ segment.endY }}</span>
+      <button @click="openCoordinatePicker('end')" class="coord-btn">选点</button>
     </div>
     <div class="row">
       <label>Ease</label>
@@ -244,7 +234,7 @@ function handlePickerClose() {
 }
 
 .coord-value {
-  min-width: 50px;
+  min-width: 120px;
   padding: 2px 6px;
   background: $bg-primary;
   border: 1px solid $border;

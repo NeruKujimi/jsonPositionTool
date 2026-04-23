@@ -3,6 +3,11 @@ import { ref } from 'vue'
 
 const props = defineProps<{
   json: string
+  timeUnit: 'milliseconds' | 'seconds'
+}>()
+
+const emit = defineEmits<{
+  'update:timeUnit': [value: 'milliseconds' | 'seconds']
 }>()
 
 const copied = ref(false)
@@ -13,12 +18,26 @@ function copyToClipboard() {
     setTimeout(() => { copied.value = false }, 1200)
   })
 }
+
+function handleTimeUnitChange(event: Event) {
+  const target = event.target as HTMLSelectElement
+  emit('update:timeUnit', target.value as 'milliseconds' | 'seconds')
+}
 </script>
 
 <template>
   <div class="json-section">
     <div class="section-title">
-      <span>JSON Output</span>
+      <div class="title-controls">
+        <span>JSON Output</span>
+        <div class="time-unit-selector">
+          <label>Time Unit:</label>
+          <select :value="timeUnit" @change="handleTimeUnitChange">
+            <option value="milliseconds">Milliseconds</option>
+            <option value="seconds">Seconds</option>
+          </select>
+        </div>
+      </div>
       <button @click="copyToClipboard">{{ copied ? 'Copied!' : 'Copy' }}</button>
     </div>
     <textarea class="json-output" :value="json" readonly></textarea>
@@ -42,6 +61,29 @@ function copyToClipboard() {
   font-size: $font-size-lg;
   color: $accent;
   border-bottom: 1px solid $border;
+
+  .title-controls {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xl;
+  }
+
+  .time-unit-selector {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    font-size: $font-size-base;
+
+    label {
+      white-space: nowrap;
+      color: $text-secondary;
+    }
+
+    select {
+      @include input-base;
+      width: 120px;
+    }
+  }
 
   button {
     font-size: $font-size-base;

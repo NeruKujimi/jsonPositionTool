@@ -11,7 +11,9 @@ import { segmentsToJsonString } from '@/utils/positionJson'
 const { segments, addSegment, removeSegment, updateField, toggleLinked, maxEndTime } = useSegments()
 const { currentTime, playing, togglePlay, reset, getPointAtTime } = useAnimation()
 
-const jsonOutput = computed(() => segmentsToJsonString(segments.value))
+const timeUnit = ref<'milliseconds' | 'seconds'>('milliseconds')
+
+const jsonOutput = computed(() => segmentsToJsonString(segments.value, timeUnit.value))
 
 function handleAddSegment() {
   addSegment()
@@ -45,7 +47,7 @@ function handleTimeChange(val: number) {
       />
     </div>
     <div class="right-panel">
-      <JsonOutput :json="jsonOutput" />
+      <JsonOutput :json="jsonOutput" v-model:timeUnit="timeUnit" />
       <PlayerControls
         :current-time="currentTime"
         :max-time="maxEndTime"
