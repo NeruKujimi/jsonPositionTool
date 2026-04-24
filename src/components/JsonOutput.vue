@@ -63,18 +63,18 @@ jsonText.value = props.json
     <div class="json-section">
       <div class="section-title">
         <div class="title-controls">
-          <span>JSON Output</span>
+          <span>JSON 文本编辑</span>
           <div class="time-unit-selector">
-            <label>Time Unit:</label>
+            <label>时间单位:</label>
             <select :value="timeUnit" @change="handleTimeUnitChange">
-              <option value="milliseconds">Milliseconds</option>
-              <option value="seconds">Seconds</option>
+              <option value="milliseconds">毫秒</option>
+              <option value="seconds">秒</option>
             </select>
           </div>
         </div>
         <div class="section-buttons">
-          <button @click="handleSave" v-if="hasChanges" :class="['save-btn', { 'save-failed': saveFailed }]">{{ saveFailed ? 'Fail' : 'Save' }}</button>
-          <button @click="copyToClipboard">{{ copied ? 'Copied!' : 'Copy' }}</button>
+          <button @click="handleSave" v-if="hasChanges" :class="['save-btn', { 'save-failed': saveFailed }]">{{ saveFailed ? '修改失败' : '保存修改' }}</button>
+          <button @click="copyToClipboard">{{ copied ? '已复制!' : '复制文本' }}</button>
         </div>
       </div>
       <textarea class="json-output" v-model="jsonText" @input="handleJsonInput"></textarea>
@@ -90,12 +90,15 @@ jsonText.value = props.json
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  max-height: 50vh;
 }
 
 .json-section {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .section-title {
@@ -183,5 +186,6 @@ jsonText.value = props.json
   resize: none;
   outline: none;
   line-height: 1.5;
+  overflow-y: auto;
 }
 </style>

@@ -11,7 +11,7 @@ import { segmentsToJsonString } from '@/utils/positionJson'
 const { segments, addSegment, removeSegment, updateField, toggleLinked, maxEndTime, parseJson, mirrorHorizontal, mirrorVertical, mirrorDiagonal, rotate, translate, scale } = useSegments()
 const { currentTime, playing, togglePlay, reset, getPointAtTime } = useAnimation()
 
-const timeUnit = ref<'milliseconds' | 'seconds'>('milliseconds')
+const timeUnit = ref<'milliseconds' | 'seconds'>('seconds')
 const bpm = ref(120)
 const useBpmMode = ref(false)
 
@@ -38,18 +38,30 @@ function handleParseJson(json: any) {
     parseJson(json, timeUnit.value)
   }
 }
+
+function handleExit() {
+  // 在Electron环境中，退出应用
+  if (typeof window !== 'undefined' && (window as any).process && (window as any).process.versions && (window as any).process.versions.electron) {
+    // 直接关闭窗口
+    window.close()
+  } else {
+    // 在浏览器环境中，刷新页面
+    window.location.reload()
+  }
+}
 </script>
 
 <template>
   <header class="app-header">
     <h1>JSON Position Tool</h1>
+    <button class="exit-button" @click="handleExit">退出</button>
   </header>
   <main class="app-main">
     <div class="left-panel">
   <div class="bpm-control">
     <label class="bpm-toggle">
       <input type="checkbox" v-model="useBpmMode" />
-      BPM Mode
+      BPM模式
     </label>
     <template v-if="useBpmMode">
       <label>BPM: </label>
@@ -92,13 +104,33 @@ function handleParseJson(json: any) {
 @use '@/styles/mixins' as *;
 
 .app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 20px;
+  background: $bg-secondary;
+  border-bottom: 2px solid $border;
+
   h1 {
     text-align: center;
-    padding: 12px;
-    background: $bg-secondary;
     color: $accent;
-    font-size: $font-size-xl;
-    border-bottom: 2px solid $border;
+    font-size: $font-size-lg;
+    margin: 0;
+  }
+
+  .exit-button {
+    background: $danger;
+    color: white;
+    border: 1px solid $danger;
+    padding: $spacing-sm $spacing-xl;
+    border-radius: $border-radius;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: $font-size-base;
+
+    &:hover {
+      background: $danger-hover;
+    }
   }
 }
 
@@ -109,10 +141,11 @@ function handleParseJson(json: any) {
 }
 
 .left-panel {
-  width: 55%;
+  width: 45%;
   display: flex;
   flex-direction: column;
   border-right: 2px solid $border;
+  overflow: hidden;
 
   .bpm-control {
     padding: 16px;
@@ -143,8 +176,10 @@ function handleParseJson(json: any) {
 }
 
 .right-panel {
-  width: 45%;
+  width: 55%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 </style>

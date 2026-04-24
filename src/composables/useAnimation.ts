@@ -13,7 +13,7 @@ export function useAnimation() {
     onFrame = cb
   }
 
-  function play(segments: Segment[], maxTime: number) {
+  function play(_segments: Segment[], maxTime: number) {
     if (playing.value) return
     playing.value = true
     if (currentTime.value >= maxTime) currentTime.value = 0

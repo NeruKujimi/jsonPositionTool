@@ -42,20 +42,20 @@ onMounted(() => {
 <template>
   <div class="preview-section">
     <div class="section-title">
-      <span>Preview</span>
+      <span>预览</span>
     </div>
     <div class="time-input-section">
       <input 
         v-model="timeInput" 
         type="number" 
-        placeholder="Enter time" 
+        placeholder="输入时间" 
         class="time-input"
       />
       <button @click="getCoordinates" class="get-coordinates-btn">
-        Get Coordinates
+        获取时间节点
       </button>
       <div v-if="coordinates" class="coordinates-display">
-        Coordinates: ({{ coordinates.x.toFixed(2) }}, {{ coordinates.y.toFixed(2) }})
+        坐标: ({{ coordinates.x.toFixed(2) }}, {{ coordinates.y.toFixed(2) }})
       </div>
     </div>
     <canvas ref="canvasRef" class="preview-canvas"></canvas>
@@ -70,6 +70,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   border-top: 2px solid $border;
+  min-height: 0;
 }
 
 .section-title {

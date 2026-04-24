@@ -2,18 +2,23 @@
   "name": "json-position-tool",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
+  "type": "commonjs",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "electron:dev": "electron .",
+    "electron:package": "npx @electron/packager . \"JSON Position Tool\" --platform=win32 --arch=x64 --out=dist-electron --overwrite --asar"
   },
   "dependencies": {
     "vue": "^3.5.13"
   },
   "devDependencies": {
+    "@electron/packager": "^20.0.0",
     "@vitejs/plugin-vue": "^5.2.3",
+    "electron": "^41.3.0",
     "sass": "^1.86.3",
     "typescript": "^5.8.3",
     "vite": "^6.3.2",

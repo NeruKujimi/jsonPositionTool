@@ -116,10 +116,10 @@ function openDoubleCoordinatePicker() {
   showCoordinatePicker.value = true
 }
 
-function openEditCoordinatePicker() {
-  currentPickerMode.value = 'edit'
-  showCoordinatePicker.value = true
-}
+// function openEditCoordinatePicker() {
+//   currentPickerMode.value = 'edit'
+//   showCoordinatePicker.value = true
+// }
 
 function handleCoordinateUpdate(value: { x: number, y: number }) {
   if (!currentPickerTarget.value) return
@@ -197,19 +197,25 @@ function handleScale() {
 <template>
   <div class="segment">
     <div class="seg-header">
-      <span class="seg-index">Segment {{ index + 1 }}</span>
-      <button class="btn-remove" @click="emit('remove', segment.id)">Remove</button>
+      <span class="seg-index">事件 {{ index + 1 }}</span>
+      <button class="btn-remove" @click="emit('remove', segment.id)">删除</button>
     </div>
     <div class="row" v-if="!useBpmMode">
-      <label>Start Time</label>
-      <input type="number" :value="segment.startTime" @input="onFieldInput('startTime', $event)" />
-      <label>End Time</label>
-      <input type="number" :value="segment.endTime" @input="onFieldInput('endTime', $event)" />
+      <label>开始时间</label>
+      <div class="input-with-unit">
+        <input type="number" :value="segment.startTime" @input="onFieldInput('startTime', $event)" />
+        <span class="unit">ms</span>
+      </div>
+      <label>结束时间</label>
+      <div class="input-with-unit">
+        <input type="number" :value="segment.endTime" @input="onFieldInput('endTime', $event)" />
+        <span class="unit">ms</span>
+      </div>
     </div>
     <div class="row" v-else>
-      <label>Start Beat</label>
+      <label>开始节拍</label>
       <input type="number" v-model.number="startBeat" step="0.25" />
-      <label>End Beat</label>
+      <label>结束节拍</label>
       <input type="number" v-model.number="endBeat" step="0.25" />
     </div>
     <div class="row time-preview" v-if="useBpmMode">
@@ -218,25 +224,25 @@ function handleScale() {
       <span class="time-preview-value">End: {{ round(beatsToMs(endBeat)) }}ms</span>
     </div>
     <div class="row">
-      <label>Start</label>
+      <label>起点</label>
       <span class="coord-value">{{ segment.startX }}, {{ segment.startY }}</span>
       <button @click="openCoordinatePicker('start')" class="coord-btn">修改</button>
-      <label>End</label>
+      <label>终点</label>
       <span class="coord-value">{{ segment.endX }}, {{ segment.endY }}</span>
       <button @click="openCoordinatePicker('end')" class="coord-btn">修改</button>
       <button @click="openDoubleCoordinatePicker" class="coord-btn">同时选点</button>
     </div>
     <div class="row">
-      <label>Ease</label>
+      <label>缓动</label>
       <select :value="segment.easeType" @change="onFieldInput('easeType', $event)">
         <option v-for="name in easeOptions" :key="name" :value="name">{{ name }}</option>
       </select>
       <button @click="togglePreview" class="preview-btn">
-        {{ showPreview ? 'Hide Preview' : 'Show Preview' }}
+        {{ showPreview ? '隐藏预览' : '显示预览' }}
       </button>
       <label class="link-label">
         <input type="checkbox" :checked="segment.linked" @change="onLinkToggle" />
-        Link
+        链接
       </label>
     </div>
     <div v-if="showPreview" class="ease-preview-container">
@@ -244,45 +250,53 @@ function handleScale() {
     </div>
     <div v-if="vectorOps" class="vector-ops-container">
       <div class="vector-ops-title">向量操作</div>
-      <div class="vector-ops-section">
-        <div class="vector-ops-label">镜像</div>
-        <div class="vector-ops-buttons">
-          <button @click="handleMirrorHorizontal" class="vector-btn">水平镜像</button>
-          <button @click="handleMirrorVertical" class="vector-btn">垂直镜像</button>
-          <button @click="handleMirrorDiagonal" class="vector-btn">对角镜像</button>
+      <div class="vector-ops-row">
+        <div class="vector-ops-item">
+          <div class="vector-ops-label">镜像</div>
+          <div class="vector-ops-buttons">
+            <button @click="handleMirrorHorizontal" class="vector-btn">水平</button>
+            <button @click="handleMirrorVertical" class="vector-btn">垂直</button>
+            <button @click="handleMirrorDiagonal" class="vector-btn">对角</button>
+          </div>
         </div>
       </div>
-      <div class="vector-ops-section">
-        <div class="vector-ops-label">旋转</div>
-        <div class="vector-ops-inputs">
-          <input type="number" v-model.number="rotateAngle" step="15" />
-          <span>度</span>
-          <select v-model="rotationCenter" class="rotation-center-select">
-            <option value="start">绕起点</option>
-            <option value="center">绕中心</option>
-            <option value="end">绕终点</option>
-          </select>
-          <button @click="handleRotate" class="vector-btn">旋转</button>
+      <div class="vector-ops-row">
+        <div class="vector-ops-item">
+          <div class="vector-ops-label">旋转</div>
+          <div class="vector-ops-inputs">
+            <input type="number" v-model.number="rotateAngle" step="15" />
+            <span>度</span>
+            <select v-model="rotationCenter" class="rotation-center-select">
+              <option value="start">绕起点</option>
+              <option value="center">绕中心</option>
+              <option value="end">绕终点</option>
+            </select>
+            <button @click="handleRotate" class="vector-btn">旋转</button>
+          </div>
         </div>
       </div>
-      <div class="vector-ops-section">
-        <div class="vector-ops-label">平移</div>
-        <div class="vector-ops-inputs">
-          <label>DX:</label>
-          <input type="number" v-model.number="translateDx" step="0.5" />
-          <label>DY:</label>
-          <input type="number" v-model.number="translateDy" step="0.5" />
-          <button @click="handleTranslate" class="vector-btn">平移</button>
+      <div class="vector-ops-row">
+        <div class="vector-ops-item">
+          <div class="vector-ops-label">平移</div>
+          <div class="vector-ops-inputs">
+            <label>X:</label>
+            <input type="number" v-model.number="translateDx" step="0.5" />
+            <label>Y:</label>
+            <input type="number" v-model.number="translateDy" step="0.5" />
+            <button @click="handleTranslate" class="vector-btn">平移</button>
+          </div>
         </div>
       </div>
-      <div class="vector-ops-section">
-        <div class="vector-ops-label">缩放</div>
-        <div class="vector-ops-inputs">
-          <label>SX:</label>
-          <input type="number" v-model.number="scaleSx" step="0.1" />
-          <label>SY:</label>
-          <input type="number" v-model.number="scaleSy" step="0.1" />
-          <button @click="handleScale" class="vector-btn">缩放</button>
+      <div class="vector-ops-row">
+        <div class="vector-ops-item">
+          <div class="vector-ops-label">缩放</div>
+          <div class="vector-ops-inputs">
+            <label>X:</label>
+            <input type="number" v-model.number="scaleSx" step="0.1" />
+            <label>Y:</label>
+            <input type="number" v-model.number="scaleSy" step="0.1" />
+            <button @click="handleScale" class="vector-btn">缩放</button>
+          </div>
         </div>
       </div>
     </div>
@@ -292,7 +306,7 @@ function handleScale() {
       :visible="showCoordinatePicker"
       :mode="currentPickerMode"
       :start-point="currentPickerMode === 'double' ? undefined : (currentPickerMode === 'edit' ? { x: segment.startX, y: segment.startY } : undefined)"
-      :edit-target="currentPickerMode === 'edit' ? currentPickerTarget : undefined"
+      :edit-target="currentPickerMode === 'edit' ? (currentPickerTarget || undefined) : undefined"
       :other-point="currentPickerMode === 'edit' ? (currentPickerTarget === 'start' ? { x: segment.endX, y: segment.endY } : { x: segment.startX, y: segment.startY }) : undefined"
       @update:visible="handlePickerClose"
       @update:modelValue="handleCoordinateUpdate"
@@ -360,6 +374,18 @@ function handleScale() {
   select {
     @include input-base;
     width: $input-width-md;
+  }
+
+  .input-with-unit {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+
+    .unit {
+      color: $text-secondary;
+      font-size: $font-size-sm;
+      white-space: nowrap;
+    }
   }
 
   .coord-value {
@@ -467,7 +493,9 @@ function handleScale() {
   font-size: $font-size-base;
 }
 
-.vector-ops-section {
+.vector-ops-row {
+  display: flex;
+  align-items: center;
   margin-bottom: $spacing-md;
   
   &:last-child {
@@ -475,27 +503,38 @@ function handleScale() {
   }
 }
 
+.vector-ops-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+}
+
 .vector-ops-label {
   color: $text-secondary;
   font-size: $font-size-sm;
-  margin-bottom: $spacing-sm;
+  white-space: nowrap;
+  min-width: 40px;
 }
 
 .vector-ops-buttons {
   display: flex;
   gap: $spacing-sm;
-  flex-wrap: wrap;
+  flex: 1;
 }
 
 .vector-ops-inputs {
   display: flex;
   align-items: center;
   gap: $spacing-sm;
+  flex: 1;
   flex-wrap: wrap;
   
   label {
     color: $text-secondary;
     font-size: $font-size-sm;
+    white-space: nowrap;
   }
   
   input[type="number"] {
@@ -506,6 +545,7 @@ function handleScale() {
   span {
     color: $text-secondary;
     font-size: $font-size-sm;
+    white-space: nowrap;
   }
   
   .rotation-center-select {
@@ -518,5 +558,6 @@ function handleScale() {
   @include button-base;
   font-size: $font-size-sm;
   padding: $spacing-xs $spacing-sm;
+  white-space: nowrap;
 }
 </style>

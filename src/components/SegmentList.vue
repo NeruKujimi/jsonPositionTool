@@ -27,8 +27,8 @@ const emit = defineEmits<{
 <template>
   <div class="segment-list">
     <div class="section-title">
-      <span>Segments</span>
-      <button @click="emit('add')">+ Add</button>
+      <span>事件</span>
+      <button @click="emit('add')">+ 添加</button>
     </div>
     <div class="segments-container">
       <SegmentEditor
@@ -57,6 +57,7 @@ const emit = defineEmits<{
   flex-direction: column;
   flex: 1;
   overflow: hidden;
+  min-height: 0;
 }
 
 .section-title {
@@ -86,5 +87,6 @@ const emit = defineEmits<{
   flex: 1;
   overflow-y: auto;
   padding: $spacing-md;
+  min-height: 0;
 }
 </style>

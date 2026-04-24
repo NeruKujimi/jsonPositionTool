@@ -27,7 +27,7 @@ export function useSegments() {
     const idx = segments.value.findIndex(s => s.id === id)
     if (idx === -1) return
     
-    const removedSeg = segments.value[idx]!
+    // const removedSeg = segments.value[idx]!
     
     // Check if we need to unlink adjacent segments
     const hasPrev = idx > 0

@@ -26,7 +26,7 @@ export function usePreview(canvasRef: Ref<HTMLCanvasElement | null>) {
   function draw(
     segments: Segment[],
     currentTime: number,
-    maxTime: number,
+    _maxTime: number,
     getPointAtTime: (segments: Segment[], time: number) => { x: number; y: number },
   ) {
     const canvas = canvasRef.value

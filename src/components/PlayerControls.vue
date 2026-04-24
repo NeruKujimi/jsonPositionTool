@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = defineProps<{
+defineProps<{
   currentTime: number
   maxTime: number
   playing: boolean
@@ -20,10 +20,10 @@ function onSliderInput(event: Event) {
 <template>
   <div class="controls">
     <button :class="{ active: playing }" @click="emit('toggle-play')">
-      {{ playing ? 'Pause' : 'Play' }}
+      {{ playing ? '暂停' : '播放' }}
     </button>
-    <button @click="emit('reset')">Reset</button>
-    <label>Time:</label>
+    <button @click="emit('reset')">停止</button>
+    <label>时间:</label>
     <input
       type="range"
       :min="0"
@@ -31,7 +31,7 @@ function onSliderInput(event: Event) {
       :value="currentTime"
       @input="onSliderInput"
     />
-    <span class="time-display">{{ currentTime.toFixed(0) }} / {{ maxTime }}</span>
+    <span class="time-display">{{ currentTime.toFixed(0) }}ms / {{ maxTime }}ms</span>
   </div>
 </template>
 
