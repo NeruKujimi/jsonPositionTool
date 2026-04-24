@@ -12,6 +12,8 @@ const { segments, addSegment, removeSegment, updateField, toggleLinked, maxEndTi
 const { currentTime, playing, togglePlay, reset, getPointAtTime } = useAnimation()
 
 const timeUnit = ref<'milliseconds' | 'seconds'>('milliseconds')
+const bpm = ref(120)
+const useBpmMode = ref(false)
 
 const jsonOutput = computed(() => segmentsToJsonString(segments.value, timeUnit.value))
 
@@ -38,14 +40,26 @@ function handleTimeChange(val: number) {
   </header>
   <main class="app-main">
     <div class="left-panel">
-      <SegmentList
-        :segments="segments"
-        @add="handleAddSegment"
-        @remove="(id: number) => removeSegment(id)"
-        @update="updateField"
-        @toggle-linked="toggleLinked"
-      />
-    </div>
+  <div class="bpm-control">
+    <label class="bpm-toggle">
+      <input type="checkbox" v-model="useBpmMode" />
+      BPM Mode
+    </label>
+    <template v-if="useBpmMode">
+      <label>BPM: </label>
+      <input type="number" v-model.number="bpm" min="1" max="300" />
+    </template>
+  </div>
+  <SegmentList
+    :segments="segments"
+    :bpm="bpm"
+    :use-bpm-mode="useBpmMode"
+    @add="handleAddSegment"
+    @remove="(id: number) => removeSegment(id)"
+    @update="updateField"
+    @toggle-linked="toggleLinked"
+  />
+</div>
     <div class="right-panel">
       <JsonOutput :json="jsonOutput" v-model:timeUnit="timeUnit" />
       <PlayerControls
@@ -68,6 +82,7 @@ function handleTimeChange(val: number) {
 
 <style lang="scss" scoped>
 @use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
 
 .app-header {
   h1 {
@@ -91,6 +106,33 @@ function handleTimeChange(val: number) {
   display: flex;
   flex-direction: column;
   border-right: 2px solid $border;
+
+  .bpm-control {
+    padding: 16px;
+    background: $bg-secondary;
+    border-bottom: 1px solid $border;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    label {
+      color: $text-secondary;
+      font-weight: bold;
+    }
+
+    .bpm-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: $text-secondary;
+      font-weight: bold;
+    }
+
+    input[type="number"] {
+      @include input-base;
+      width: 80px;
+    }
+  }
 }
 
 .right-panel {

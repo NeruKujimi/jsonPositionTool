@@ -4,6 +4,8 @@ import SegmentEditor from './SegmentEditor.vue'
 
 defineProps<{
   segments: Segment[]
+  bpm: number
+  useBpmMode: boolean
 }>()
 
 const emit = defineEmits<{
@@ -27,6 +29,8 @@ const emit = defineEmits<{
         :segment="seg"
         :index="index"
         :is-first="index === 0"
+        :bpm="bpm"
+        :use-bpm-mode="useBpmMode"
         @remove="emit('remove', $event)"
         @update="(id, field, value) => emit('update', id, field, value)"
         @toggle-linked="(id, linked) => emit('toggle-linked', id, linked)"

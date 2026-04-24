@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { Segment } from '@/types'
 import { getAllEaseNames } from '@/registry/easing'
 import EasePreview from './EasePreview.vue'
@@ -9,6 +9,8 @@ const props = defineProps<{
   segment: Segment
   index: number
   isFirst: boolean
+  bpm: number
+  useBpmMode: boolean
 }>()
 
 const emit = defineEmits<{
@@ -23,12 +25,52 @@ const showCoordinatePicker = ref(false)
 const currentPickerMode = ref<'single' | 'double' | 'edit'>('single')
 const currentPickerTarget = ref<'start' | 'end' | null>(null)
 const tempCoordinate = ref({ x: 0, y: 0 })
+const useBeats = ref(false)
+const startBeat = ref(0)
+const endBeat = ref(0)
 
 const linkNote = computed(() =>
   props.segment.linked && !props.isFirst
     ? '* Linked to previous segment (start values auto-filled)'
     : ''
 )
+
+const msPerBeat = computed(() => 60000 / props.bpm)
+
+function beatsToMs(beats: number): number {
+  return beats * msPerBeat.value
+}
+
+function msToBeats(ms: number): number {
+  return ms / msPerBeat.value
+}
+
+function round(value: number): number {
+  return Math.round(value)
+}
+
+watch(() => props.useBpmMode, (newVal) => {
+  useBeats.value = newVal
+})
+
+watch(useBeats, (newVal) => {
+  if (newVal) {
+    startBeat.value = msToBeats(props.segment.startTime)
+    endBeat.value = msToBeats(props.segment.endTime)
+  }
+})
+
+watch(startBeat, (newVal) => {
+  if (useBeats.value) {
+    emit('update', props.segment.id, 'startTime', beatsToMs(newVal))
+  }
+})
+
+watch(endBeat, (newVal) => {
+  if (useBeats.value) {
+    emit('update', props.segment.id, 'endTime', beatsToMs(newVal))
+  }
+})
 
 function onFieldInput(field: keyof Segment, event: Event) {
   const target = event.target as HTMLInputElement | HTMLSelectElement
@@ -105,11 +147,22 @@ function handlePickerClose() {
       <span class="seg-index">Segment {{ index + 1 }}</span>
       <button class="btn-remove" @click="emit('remove', segment.id)">Remove</button>
     </div>
-    <div class="row">
+    <div class="row" v-if="!useBpmMode">
       <label>Start Time</label>
       <input type="number" :value="segment.startTime" @input="onFieldInput('startTime', $event)" />
       <label>End Time</label>
       <input type="number" :value="segment.endTime" @input="onFieldInput('endTime', $event)" />
+    </div>
+    <div class="row" v-else>
+      <label>Start Beat</label>
+      <input type="number" v-model.number="startBeat" step="0.25" />
+      <label>End Beat</label>
+      <input type="number" v-model.number="endBeat" step="0.25" />
+    </div>
+    <div class="row time-preview" v-if="useBpmMode">
+      <span class="time-preview-label">实际时间:</span>
+      <span class="time-preview-value">Start: {{ round(beatsToMs(startBeat)) }}ms</span>
+      <span class="time-preview-value">End: {{ round(beatsToMs(endBeat)) }}ms</span>
     </div>
     <div class="row">
       <label>Start</label>
@@ -241,6 +294,38 @@ function handlePickerClose() {
     gap: $spacing-sm;
     color: $text-secondary;
     font-size: $font-size-sm;
+  }
+
+  .beat-toggle {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    color: $text-secondary;
+    font-size: $font-size-sm;
+    margin-left: auto;
+  }
+}
+
+.time-preview {
+  background: rgba($accent, 0.1);
+  border: 1px solid rgba($accent, 0.3);
+  border-radius: 4px;
+  padding: $spacing-sm $spacing-md;
+  margin-top: -$spacing-sm;
+  margin-bottom: $spacing-md;
+
+  .time-preview-label {
+    color: $accent;
+    font-weight: bold;
+    font-size: $font-size-sm;
+    margin-right: $spacing-md;
+  }
+
+  .time-preview-value {
+    color: $text-primary;
+    font-family: $font-mono;
+    font-size: $font-size-sm;
+    margin-right: $spacing-lg;
   }
 }
 

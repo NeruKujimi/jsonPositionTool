@@ -188,7 +188,7 @@ onUnmounted(() => {
   transition: background 0.2s;
   
   &:hover {
-    background: darken($accent, 10%);
+    background: $accent-hover;
   }
 }
 </style>
