@@ -80,6 +80,15 @@ watch(endBeat, (newVal) => {
   }
 })
 
+// 监听BPM变化，保持节拍数不变但更新实际时间
+watch(() => props.bpm, () => {
+  if (useBeats.value) {
+    // 保持节拍数不变，重新计算实际时间
+    emit('update', props.segment.id, 'startTime', beatsToMs(startBeat.value))
+    emit('update', props.segment.id, 'endTime', beatsToMs(endBeat.value))
+  }
+})
+
 function onFieldInput(field: keyof Segment, event: Event) {
   const target = event.target as HTMLInputElement | HTMLSelectElement
   if (field === 'easeType') {

@@ -1,8 +1,12 @@
 <script setup lang="ts">
-defineProps<{
+import { computed } from 'vue'
+
+const props = defineProps<{
   currentTime: number
   maxTime: number
   playing: boolean
+  useBpmMode: boolean
+  bpm: number
 }>()
 
 const emit = defineEmits<{
@@ -10,6 +14,27 @@ const emit = defineEmits<{
   reset: []
   'time-change': [value: number]
 }>()
+
+// 计算当前时间（根据BPM模式）
+const displayCurrentTime = computed(() => {
+  if (props.useBpmMode) {
+    const msPerBeat = 60000 / props.bpm
+    return (props.currentTime / msPerBeat).toFixed(2)
+  }
+  return props.currentTime.toFixed(0)
+})
+
+// 计算最大时间（根据BPM模式）
+const displayMaxTime = computed(() => {
+  if (props.useBpmMode) {
+    const msPerBeat = 60000 / props.bpm
+    return (props.maxTime / msPerBeat).toFixed(2)
+  }
+  return props.maxTime
+})
+
+// 计算时间单位
+const timeUnit = computed(() => props.useBpmMode ? '拍' : 'ms')
 
 function onSliderInput(event: Event) {
   const target = event.target as HTMLInputElement
@@ -19,19 +44,19 @@ function onSliderInput(event: Event) {
 
 <template>
   <div class="controls">
-    <button :class="{ active: playing }" @click="emit('toggle-play')">
-      {{ playing ? '暂停' : '播放' }}
+    <button :class="{ active: props.playing }" @click="emit('toggle-play')">
+      {{ props.playing ? '暂停' : '播放' }}
     </button>
     <button @click="emit('reset')">停止</button>
     <label>时间:</label>
     <input
       type="range"
       :min="0"
-      :max="maxTime || 1"
-      :value="currentTime"
+      :max="props.maxTime || 1"
+      :value="props.currentTime"
       @input="onSliderInput"
     />
-    <span class="time-display">{{ currentTime.toFixed(0) }}ms / {{ maxTime }}ms</span>
+    <span class="time-display">{{ displayCurrentTime }} {{ timeUnit }} / {{ displayMaxTime }} {{ timeUnit }}</span>
   </div>
 </template>
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import SegmentList from '@/components/SegmentList.vue'
 import JsonOutput from '@/components/JsonOutput.vue'
 import PreviewCanvas from '@/components/PreviewCanvas.vue'
@@ -18,7 +18,37 @@ const bpm = ref(120)
 const useBpmMode = ref(false)
 const showVectorModal = ref(false)
 
-const jsonOutput = computed(() => segmentsToJsonString(segments.value, timeUnit.value))
+const jsonOutput = computed(() => {
+  // 当切换BPM模式或BPM值变化时，强制重新计算JSON输出
+  useBpmMode.value // 确保依赖于useBpmMode
+  bpm.value // 确保依赖于bpm
+  return segmentsToJsonString(segments.value, timeUnit.value)
+})
+
+// 监听BPM变化，保持拍数不变但更新实际时间
+let currentBeat = 0
+watch(bpm, (newBpm, oldBpm) => {
+  if (useBpmMode.value && oldBpm && newBpm) {
+    // 计算当前拍数
+    const oldMsPerBeat = 60000 / oldBpm
+    currentBeat = currentTime.value / oldMsPerBeat
+    
+    // 使用新的BPM值计算新的毫秒时间
+    const newMsPerBeat = 60000 / newBpm
+    currentTime.value = currentBeat * newMsPerBeat
+  }
+})
+
+// 监听useBpmMode变化，保持时间一致性
+watch(useBpmMode, (newMode) => {
+  if (newMode) {
+    // 切换到BPM模式，记录当前拍数
+    const msPerBeat = 60000 / bpm.value
+    currentBeat = currentTime.value / msPerBeat
+  } else {
+    // 切换到非BPM模式，保持毫秒时间不变
+  }
+})
 
 function handleAddSegment() {
   addSegment()
@@ -98,7 +128,7 @@ function handleVectorExecute(operation: string, params: any) {
 
 <template>
   <header class="app-header">
-    <h1>JSON Position Tool</h1>
+    <h1>《汐梦之歌》Position工具</h1>
     <div class="header-buttons">
       <button class="fullscreen-button" @click="toggleFullscreen">{{ isFullscreen ? '退出全屏' : '全屏' }}</button>
       <button class="exit-button" @click="handleExit">退出</button>
@@ -134,6 +164,8 @@ function handleVectorExecute(operation: string, params: any) {
         :current-time="currentTime"
         :max-time="maxEndTime"
         :playing="playing"
+        :use-bpm-mode="useBpmMode"
+        :bpm="bpm"
         @toggle-play="handleTogglePlay"
         @reset="handleReset"
         @time-change="handleTimeChange"
@@ -143,6 +175,9 @@ function handleVectorExecute(operation: string, params: any) {
         :current-time="currentTime"
         :max-time="maxEndTime"
         :get-point-at-time="getPointAtTime"
+        :use-bpm-mode="useBpmMode"
+        :bpm="bpm"
+        @time-change="handleTimeChange"
       />
     </div>
   </main>
