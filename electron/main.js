@@ -1,8 +1,40 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 // 保持对窗口对象的全局引用，否则窗口会在垃圾回收时自动关闭
 let mainWindow;
+let splashWindow;
+
+function createSplashWindow() {
+  // 创建启动窗口
+  splashWindow = new BrowserWindow({
+    width: 400,
+    height: 400,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
+    }
+  });
+
+  // 加载启动画面
+  const splashPath = path.join(__dirname, 'splash.html');
+  splashWindow.loadFile(splashPath);
+
+  // 监听启动画面加载完成
+  splashWindow.webContents.on('did-finish-load', () => {
+    splashWindow.show();
+  });
+
+  // 启动窗口关闭时触发
+  splashWindow.on('closed', () => {
+    splashWindow = null;
+  });
+}
 
 function createWindow() {
   // 创建浏览器窗口
@@ -10,6 +42,7 @@ function createWindow() {
     width: 1200,
     height: 900,
     frame: false, // 隐藏默认标题栏
+    show: false, // 先隐藏，等启动动画完成后再显示
     webPreferences: {
       // 禁用Node.js集成，使用contextBridge安全地暴露API
       nodeIntegration: false,
@@ -32,9 +65,9 @@ function createWindow() {
     const appPath = path.join(process.resourcesPath, 'app', 'dist', 'index.html');
     
     // 尝试不同的路径
-    if (require('fs').existsSync(indexPath)) {
+    if (fs.existsSync(indexPath)) {
       mainWindow.loadFile(indexPath);
-    } else if (require('fs').existsSync(appPath)) {
+    } else if (fs.existsSync(appPath)) {
       mainWindow.loadFile(appPath);
     } else {
       // 如果都找不到，显示错误信息
@@ -61,8 +94,12 @@ function createWindow() {
   });
 }
 
-// Electron完成初始化后创建窗口
-app.on('ready', createWindow);
+// Electron完成初始化后创建启动窗口
+app.on('ready', () => {
+  createSplashWindow();
+  // 同时开始加载主窗口，但不显示
+  createWindow();
+});
 
 // 所有窗口关闭时退出应用
 app.on('window-all-closed', () => {
@@ -82,6 +119,16 @@ app.on('activate', () => {
 // 监听退出请求
 ipcMain.on('quit-app', () => {
   app.quit();
+});
+
+// 监听启动画面完成
+ipcMain.on('splash-ready', () => {
+  if (splashWindow) {
+    splashWindow.close();
+  }
+  if (mainWindow) {
+    mainWindow.show();
+  }
 });
 
 // 注册全局快捷键打开开发者工具

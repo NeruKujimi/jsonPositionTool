@@ -4,5 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electron', {
   app: {
     quit: () => ipcRenderer.send('quit-app')
-  }
+  },
+  // 启动画面相关
+  splashReady: () => ipcRenderer.send('splash-ready')
 });
