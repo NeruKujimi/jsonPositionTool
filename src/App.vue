@@ -8,7 +8,7 @@ import { useSegments } from '@/composables/useSegments'
 import { useAnimation } from '@/composables/useAnimation'
 import { segmentsToJsonString } from '@/utils/positionJson'
 
-const { segments, addSegment, removeSegment, updateField, toggleLinked, maxEndTime } = useSegments()
+const { segments, addSegment, removeSegment, updateField, toggleLinked, maxEndTime, parseJson } = useSegments()
 const { currentTime, playing, togglePlay, reset, getPointAtTime } = useAnimation()
 
 const timeUnit = ref<'milliseconds' | 'seconds'>('milliseconds')
@@ -31,6 +31,12 @@ function handleReset() {
 
 function handleTimeChange(val: number) {
   currentTime.value = val
+}
+
+function handleParseJson(json: any) {
+  if (Array.isArray(json)) {
+    parseJson(json, timeUnit.value)
+  }
 }
 </script>
 
@@ -61,7 +67,7 @@ function handleTimeChange(val: number) {
   />
 </div>
     <div class="right-panel">
-      <JsonOutput :json="jsonOutput" v-model:timeUnit="timeUnit" />
+      <JsonOutput :json="jsonOutput" v-model:timeUnit="timeUnit" @parse-json="handleParseJson" />
       <PlayerControls
         :current-time="currentTime"
         :max-time="maxEndTime"

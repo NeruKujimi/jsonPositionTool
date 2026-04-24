@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps<{
   json: string
@@ -8,9 +8,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:timeUnit': [value: 'milliseconds' | 'seconds']
+  'parse-json': [value: any]
 }>()
 
 const copied = ref(false)
+const jsonText = ref(props.json)
+const hasChanges = ref(false)
 
 function copyToClipboard() {
   navigator.clipboard.writeText(props.json).then(() => {
@@ -23,6 +26,32 @@ function handleTimeUnitChange(event: Event) {
   const target = event.target as HTMLSelectElement
   emit('update:timeUnit', target.value as 'milliseconds' | 'seconds')
 }
+
+function handleJsonInput(event: Event) {
+  const target = event.target as HTMLTextAreaElement
+  jsonText.value = target.value
+  hasChanges.value = true
+}
+
+function handleSave() {
+  try {
+    const parsed = JSON.parse(jsonText.value)
+    emit('parse-json', parsed)
+    hasChanges.value = false
+  } catch (e) {
+    console.error('JSON parsing error:', e)
+    // Ignore parsing errors
+  }
+}
+
+// Watch for external changes to json prop
+watch(() => props.json, (newVal) => {
+  jsonText.value = newVal
+  hasChanges.value = false
+})
+
+// Initialize
+jsonText.value = props.json
 </script>
 
 <template>
@@ -38,9 +67,12 @@ function handleTimeUnitChange(event: Event) {
           </select>
         </div>
       </div>
-      <button @click="copyToClipboard">{{ copied ? 'Copied!' : 'Copy' }}</button>
+      <div class="section-buttons">
+        <button @click="handleSave" v-if="hasChanges" class="save-btn">Save</button>
+        <button @click="copyToClipboard">{{ copied ? 'Copied!' : 'Copy' }}</button>
+      </div>
     </div>
-    <textarea class="json-output" :value="json" readonly></textarea>
+    <textarea class="json-output" v-model="jsonText" @input="handleJsonInput"></textarea>
   </div>
 </template>
 
@@ -66,6 +98,12 @@ function handleTimeUnitChange(event: Event) {
     display: flex;
     align-items: center;
     gap: $spacing-xl;
+  }
+
+  .section-buttons {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
   }
 
   .time-unit-selector {
@@ -96,6 +134,17 @@ function handleTimeUnitChange(event: Event) {
 
     &:hover {
       background: $accent-hover;
+    }
+  }
+
+  .save-btn {
+    background: $success-bg;
+    border-color: $success;
+    color: $success;
+
+    &:hover {
+      background: $success-bg;
+      opacity: 0.8;
     }
   }
 }

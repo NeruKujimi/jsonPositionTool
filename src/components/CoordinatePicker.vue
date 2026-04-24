@@ -25,10 +25,10 @@ const showCoordinates = ref(true)
 const hasSelectedStart = ref(false)
 const startPoint = ref(props.startPoint || { x: 0, y: 0 })
 
-const xMin = -8
-const xMax = 8
-const yMin = -4
-const yMax = 4
+const xMin = -10
+const xMax = 10
+const yMin = -10
+const yMax = 10
 
 watch(() => props.visible, (newVal) => {
   if (newVal) {
@@ -109,16 +109,37 @@ function drawGrid() {
   ctx.lineWidth = 0.5
   ctx.setLineDash([2, 2])
   
-  for (let x = Math.ceil(xMin); x <= Math.floor(xMax); x++) {
+  // Draw grid lines at 0.5 intervals
+  for (let x = xMin; x <= xMax; x += 0.5) {
     const px = centerX + (x / xRange) * (width - 2 * padding)
+    // Highlight lines at integer positions
+    if (Math.abs(x % 1) < 0.001) {
+      ctx.strokeStyle = '#333'
+      ctx.lineWidth = 1
+      ctx.setLineDash([])
+    } else {
+      ctx.strokeStyle = '#222'
+      ctx.lineWidth = 0.5
+      ctx.setLineDash([2, 2])
+    }
     ctx.beginPath()
     ctx.moveTo(px, padding)
     ctx.lineTo(px, height - padding)
     ctx.stroke()
   }
   
-  for (let y = Math.ceil(yMin); y <= Math.floor(yMax); y++) {
+  for (let y = yMin; y <= yMax; y += 0.5) {
     const py = centerY - (y / yRange) * (height - 2 * padding)
+    // Highlight lines at integer positions
+    if (Math.abs(y % 1) < 0.001) {
+      ctx.strokeStyle = '#333'
+      ctx.lineWidth = 1
+      ctx.setLineDash([])
+    } else {
+      ctx.strokeStyle = '#222'
+      ctx.lineWidth = 0.5
+      ctx.setLineDash([2, 2])
+    }
     ctx.beginPath()
     ctx.moveTo(padding, py)
     ctx.lineTo(width - padding, py)
@@ -131,6 +152,7 @@ function drawGrid() {
   ctx.font = '10px monospace'
   ctx.textAlign = 'center'
   
+  // Draw labels at integer positions
   for (let x = Math.ceil(xMin); x <= Math.floor(xMax); x++) {
     const px = centerX + (x / xRange) * (width - 2 * padding)
     ctx.fillText(x.toString(), px, height - padding + 12)
@@ -326,10 +348,10 @@ onUnmounted(() => {
   background: $bg-secondary;
   border: 1px solid $border;
   border-radius: 8px;
-  width: 70vw;
-  height: 70vh;
-  max-width: 700px;
-  max-height: 500px;
+  width: 80vw;
+  height: 80vh;
+  max-width: 800px;
+  max-height: 600px;
   overflow: hidden;
   display: flex;
   flex-direction: column;

@@ -14,8 +14,8 @@ export function useSegments() {
       endTime: opts?.endTime ?? (prev ? prev.endTime + 1000 : 1000),
       startX: opts?.startX ?? (prev ? prev.endX : 0),
       startY: opts?.startY ?? (prev ? prev.endY : 0),
-      endX: opts?.endX ?? (prev ? prev.endX + 200 : 200),
-      endY: opts?.endY ?? (prev ? prev.endY : 0),
+      endX: opts?.endX ?? (prev ? Math.min(Math.max(prev.endX + 2, -10), 10) : 2),
+      endY: opts?.endY ?? (prev ? Math.min(Math.max(prev.endY, -10), 10) : 0),
       easeType: opts?.easeType ?? 'Linear',
       linked: opts?.linked ?? (!!prev),
     }
@@ -68,6 +68,86 @@ export function useSegments() {
     }
   }
 
+  function parseJson(json: any[], timeUnit: 'milliseconds' | 'seconds' = 'milliseconds') {
+    segments.value = json.map((item, index) => {
+      // Handle different JSON formats
+      let startTime = 0
+      let endTime = 1000
+      let startX = 0
+      let startY = 0
+      let endX = 200
+      let endY = 0
+      let easeType = 'Linear'
+      let linked = index > 0
+
+      // Standard format
+      if (item.startTime !== undefined) {
+        let timeValue = typeof item.startTime === 'string' ? parseFloat(item.startTime) : item.startTime
+        // Convert to milliseconds if needed
+        if (timeUnit === 'seconds') {
+          timeValue *= 1000
+        }
+        startTime = timeValue
+      }
+      if (item.endTime !== undefined) {
+        let timeValue = typeof item.endTime === 'string' ? parseFloat(item.endTime) : item.endTime
+        // Convert to milliseconds if needed
+        if (timeUnit === 'seconds') {
+          timeValue *= 1000
+        }
+        endTime = timeValue
+      }
+      if (item.startX !== undefined) {
+        startX = Math.min(Math.max(item.startX, -10), 10)
+      }
+      if (item.startY !== undefined) {
+        startY = Math.min(Math.max(item.startY, -10), 10)
+      }
+      if (item.endX !== undefined) {
+        endX = Math.min(Math.max(item.endX, -10), 10)
+      }
+      if (item.endY !== undefined) {
+        endY = Math.min(Math.max(item.endY, -10), 10)
+      }
+      if (item.easeType !== undefined) {
+        easeType = item.easeType
+      }
+      if (item.linked !== undefined) {
+        linked = item.linked
+      }
+      if (item.followPrevious !== undefined) {
+        linked = item.followPrevious
+      }
+
+      // Alternative format with startPos/endPos
+      if (item.startPos) {
+        startX = item.startPos.x ?? startX
+        startY = item.startPos.y ?? startY
+      }
+      if (item.endPos) {
+        endX = item.endPos.x ?? endX
+        endY = item.endPos.y ?? endY
+      }
+
+      // Alternative format with easeType under position
+      if (item.type === 'position' && item.easeType) {
+        easeType = item.easeType
+      }
+
+      return {
+        id: idCounter++,
+        startTime,
+        endTime,
+        startX,
+        startY,
+        endX,
+        endY,
+        easeType,
+        linked,
+      }
+    })
+  }
+
   const maxEndTime = computed(() => {
     if (segments.value.length === 0) return 0
     return Math.max(...segments.value.map(s => s.endTime))
@@ -80,5 +160,6 @@ export function useSegments() {
     updateField,
     toggleLinked,
     maxEndTime,
+    parseJson,
   }
 }

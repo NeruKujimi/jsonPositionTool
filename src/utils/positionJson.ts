@@ -17,10 +17,5 @@ export function segmentToJson(seg: Segment, timeUnit: 'milliseconds' | 'seconds'
 }
 
 export function segmentsToJsonString(segments: Segment[], timeUnit: 'milliseconds' | 'seconds' = 'milliseconds'): string {
-  return segments
-    .map(seg => {
-      const json = segmentToJson(seg, timeUnit)
-      return `{"startTime": "${json.startTime}","endTime": ${json.endTime},"type": "position","followPrevious": ${json.followPrevious},"startPos": {"x": ${json.startPos.x},"y": ${json.startPos.y}},"endPos": {  "x": ${json.endPos.x},  "y": ${json.endPos.y}},"easeType": "${json.easeType}","posType": "Straight"}`
-    })
-    .join(',\n')
+  return JSON.stringify(segments.map(seg => segmentToJson(seg, timeUnit)), null, 2)
 }

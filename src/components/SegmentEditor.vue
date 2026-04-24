@@ -160,7 +160,7 @@ function handlePickerClose() {
       <input type="number" v-model.number="endBeat" step="0.25" />
     </div>
     <div class="row time-preview" v-if="useBpmMode">
-      <span class="time-preview-label">实际时间:</span>
+      <label>实际时间</label>
       <span class="time-preview-value">Start: {{ round(beatsToMs(startBeat)) }}ms</span>
       <span class="time-preview-value">End: {{ round(beatsToMs(endBeat)) }}ms</span>
     </div>
@@ -307,25 +307,32 @@ function handlePickerClose() {
 }
 
 .time-preview {
-  background: rgba($accent, 0.1);
-  border: 1px solid rgba($accent, 0.3);
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  background: $bg-primary;
+  border: 1px solid $border;
   border-radius: 4px;
   padding: $spacing-sm $spacing-md;
   margin-top: -$spacing-sm;
   margin-bottom: $spacing-md;
 
   .time-preview-label {
-    color: $accent;
-    font-weight: bold;
+    white-space: nowrap;
+    color: $text-secondary;
     font-size: $font-size-sm;
-    margin-right: $spacing-md;
   }
 
   .time-preview-value {
-    color: $text-primary;
+    background: $bg-secondary;
+    border: 1px solid $accent-border;
+    border-radius: 4px;
+    padding: $spacing-xs $spacing-sm;
+    color: $accent;
     font-family: $font-mono;
     font-size: $font-size-sm;
-    margin-right: $spacing-lg;
+    min-width: 100px;
+    text-align: center;
   }
 }
 
