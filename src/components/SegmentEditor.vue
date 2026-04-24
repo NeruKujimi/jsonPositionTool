@@ -20,6 +20,7 @@ const emit = defineEmits<{
 const easeOptions = getAllEaseNames()
 const showPreview = ref(false)
 const showCoordinatePicker = ref(false)
+const currentPickerMode = ref<'single' | 'double' | 'edit'>('single')
 const currentPickerTarget = ref<'start' | 'end' | null>(null)
 const tempCoordinate = ref({ x: 0, y: 0 })
 
@@ -48,12 +49,25 @@ function togglePreview() {
 }
 
 function openCoordinatePicker(target: 'start' | 'end') {
+  currentPickerMode.value = 'edit'
   currentPickerTarget.value = target
   if (target === 'start') {
     tempCoordinate.value = { x: props.segment.startX, y: props.segment.startY }
   } else {
     tempCoordinate.value = { x: props.segment.endX, y: props.segment.endY }
   }
+  showCoordinatePicker.value = true
+}
+
+function openDoubleCoordinatePicker() {
+  currentPickerMode.value = 'double'
+  currentPickerTarget.value = null
+  tempCoordinate.value = { x: props.segment.startX, y: props.segment.startY }
+  showCoordinatePicker.value = true
+}
+
+function openEditCoordinatePicker() {
+  currentPickerMode.value = 'edit'
   showCoordinatePicker.value = true
 }
 
@@ -67,6 +81,16 @@ function handleCoordinateUpdate(value: { x: number, y: number }) {
     emit('update', props.segment.id, 'endX', value.x)
     emit('update', props.segment.id, 'endY', value.y)
   }
+}
+
+function handleSelectStart(value: { x: number, y: number }) {
+  emit('update', props.segment.id, 'startX', value.x)
+  emit('update', props.segment.id, 'startY', value.y)
+}
+
+function handleSelectEnd(value: { x: number, y: number }) {
+  emit('update', props.segment.id, 'endX', value.x)
+  emit('update', props.segment.id, 'endY', value.y)
 }
 
 function handlePickerClose() {
@@ -90,10 +114,11 @@ function handlePickerClose() {
     <div class="row">
       <label>Start</label>
       <span class="coord-value">{{ segment.startX }}, {{ segment.startY }}</span>
-      <button @click="openCoordinatePicker('start')" class="coord-btn">选点</button>
+      <button @click="openCoordinatePicker('start')" class="coord-btn">修改</button>
       <label>End</label>
       <span class="coord-value">{{ segment.endX }}, {{ segment.endY }}</span>
-      <button @click="openCoordinatePicker('end')" class="coord-btn">选点</button>
+      <button @click="openCoordinatePicker('end')" class="coord-btn">修改</button>
+      <button @click="openDoubleCoordinatePicker" class="coord-btn">同时选点</button>
     </div>
     <div class="row">
       <label>Ease</label>
@@ -115,8 +140,14 @@ function handlePickerClose() {
     <CoordinatePicker 
       v-model="tempCoordinate" 
       :visible="showCoordinatePicker"
+      :mode="currentPickerMode"
+      :start-point="currentPickerMode === 'double' ? undefined : (currentPickerMode === 'edit' ? { x: segment.startX, y: segment.startY } : undefined)"
+      :edit-target="currentPickerMode === 'edit' ? currentPickerTarget : undefined"
+      :other-point="currentPickerMode === 'edit' ? (currentPickerTarget === 'start' ? { x: segment.endX, y: segment.endY } : { x: segment.startX, y: segment.startY }) : undefined"
       @update:visible="handlePickerClose"
       @update:modelValue="handleCoordinateUpdate"
+      @select-start="handleSelectStart"
+      @select-end="handleSelectEnd"
     />
   </div>
 </template>
@@ -128,132 +159,107 @@ function handlePickerClose() {
 .segment {
   background: $bg-secondary;
   border: 1px solid $border;
-  border-radius: $border-radius-md;
-  margin-bottom: $spacing-md;
-  padding: $spacing-lg $spacing-xl;
-  position: relative;
-
-  &:hover {
-    border-color: $accent-border;
-  }
+  border-radius: 8px;
+  padding: $section-padding;
+  margin-bottom: $spacing-lg;
 }
 
 .seg-header {
-  @include flex-between;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: $spacing-md;
+  padding-bottom: $spacing-sm;
+  border-bottom: 1px solid $border;
 
   .seg-index {
-    color: $accent;
-    font-size: $font-size-md;
     font-weight: bold;
+    color: $accent;
   }
-}
 
-.btn-remove {
-  font-size: $font-size-sm;
-  padding: $spacing-xs $spacing-lg;
-  cursor: pointer;
-  background: $danger-bg;
-  color: $danger;
-  border: 1px solid $danger;
-  border-radius: $border-radius;
+  .btn-remove {
+    @include button-base;
+    background: $danger-bg;
+    border-color: $danger;
+    color: $danger;
 
-  &:hover {
-    background: $danger-hover;
+    &:hover {
+      background: $danger-hover;
+    }
   }
 }
 
 .row {
   display: flex;
-  gap: $spacing-md;
-  margin-bottom: $spacing-sm;
   align-items: center;
+  gap: $spacing-md;
+  margin-bottom: $spacing-md;
+  flex-wrap: wrap;
 
   label {
-    font-size: $font-size-sm;
+    white-space: nowrap;
     color: $text-secondary;
-    min-width: 55px;
-    text-align: right;
+    font-size: $font-size-sm;
   }
 
-  input, select {
+  input[type="number"] {
     @include input-base;
-  }
-
-  input {
     width: $input-width-sm;
   }
 
   select {
+    @include input-base;
     width: $input-width-md;
   }
-}
 
-.link-label {
-  min-width: auto !important;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-
-  input[type="checkbox"] {
-    width: auto;
+  .coord-value {
+    background: $bg-primary;
+    border: 1px solid $border;
+    border-radius: 4px;
+    padding: $spacing-sm $spacing-md;
+    font-family: $font-mono;
+    font-size: $font-size-sm;
+    color: $accent;
+    min-width: 120px;
+    text-align: center;
   }
-}
 
-.preview-btn {
-  padding: 4px 10px;
-  font-size: $font-size-sm;
-  background: $bg-primary;
-  color: $text-primary;
-  border: 1px solid $border;
-  border-radius: $border-radius;
-  cursor: pointer;
-  transition: all 0.2s;
-  
-  &:hover {
-    background: $accent;
-    color: white;
-    border-color: $accent;
+  .coord-btn {
+    @include button-base;
+    font-size: $font-size-sm;
+    padding: $spacing-xs $spacing-sm;
   }
-}
 
-.coord-btn {
-  padding: 2px 8px;
-  font-size: $font-size-xs;
-  background: $bg-primary;
-  color: $accent;
-  border: 1px solid $accent;
-  border-radius: $border-radius;
-  cursor: pointer;
-  transition: all 0.2s;
-  
-  &:hover {
-    background: $accent;
-    color: white;
+  .preview-btn {
+    @include button-base;
+    font-size: $font-size-sm;
   }
-}
 
-.coord-value {
-  min-width: 120px;
-  padding: 2px 6px;
-  background: $bg-primary;
-  border: 1px solid $border;
-  border-radius: $border-radius;
-  color: $text-primary;
-  font-family: monospace;
-  font-size: $font-size-sm;
-  text-align: center;
+  .link-label {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    color: $text-secondary;
+    font-size: $font-size-sm;
+  }
 }
 
 .ease-preview-container {
-  margin-top: $spacing-sm;
-  margin-left: 60px;
+  margin-top: $spacing-md;
+  padding: $spacing-md;
+  background: $bg-primary;
+  border: 1px solid $border;
+  border-radius: 4px;
 }
 
 .seg-link {
+  margin-top: $spacing-md;
+  padding: $spacing-sm;
+  background: rgba($accent, 0.1);
+  border: 1px solid rgba($accent, 0.3);
+  border-radius: 4px;
+  color: $accent;
   font-size: $font-size-xs;
-  color: #4a9;
-  margin-top: $spacing-xs;
   font-style: italic;
 }
 </style>

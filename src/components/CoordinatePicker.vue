@@ -4,11 +4,17 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 const props = defineProps<{
   modelValue: { x: number, y: number }
   visible: boolean
+  mode?: 'single' | 'double' | 'edit'
+  startPoint?: { x: number, y: number }
+  editTarget?: 'start' | 'end'
+  otherPoint?: { x: number, y: number }
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: { x: number, y: number }]
   'update:visible': [value: boolean]
+  'select-start': [value: { x: number, y: number }]
+  'select-end': [value: { x: number, y: number }]
 }>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -16,6 +22,8 @@ const precision = ref(0.5)
 const mouseX = ref(0)
 const mouseY = ref(0)
 const showCoordinates = ref(true)
+const hasSelectedStart = ref(false)
+const startPoint = ref(props.startPoint || { x: 0, y: 0 })
 
 const xMin = -8
 const xMax = 8
@@ -26,6 +34,22 @@ watch(() => props.visible, (newVal) => {
   if (newVal) {
     mouseX.value = props.modelValue.x
     mouseY.value = props.modelValue.y
+    hasSelectedStart.value = false
+    if (props.startPoint) {
+      startPoint.value = { ...props.startPoint }
+      hasSelectedStart.value = true
+    }
+    if (props.mode === 'edit' && props.otherPoint) {
+      hasSelectedStart.value = true
+      startPoint.value = { ...props.otherPoint }
+    }
+  }
+})
+
+watch(() => props.startPoint, (newVal) => {
+  if (newVal) {
+    startPoint.value = { ...newVal }
+    hasSelectedStart.value = true
   }
 })
 
@@ -118,6 +142,47 @@ function drawGrid() {
     ctx.fillText(y.toString(), padding - 5, py + 3)
   }
   
+  if (props.mode === 'edit' && props.otherPoint) {
+    const otherX = props.otherPoint.x
+    const otherY = props.otherPoint.y
+    const otherDotX = centerX + (otherX / xRange) * (width - 2 * padding)
+    const otherDotY = centerY - (otherY / yRange) * (height - 2 * padding)
+    
+    ctx.fillStyle = '#2196F3'
+    ctx.beginPath()
+    ctx.arc(otherDotX, otherDotY, 4, 0, Math.PI * 2)
+    ctx.fill()
+    
+    const currentX = snappedX.value
+    const currentY = snappedY.value
+    const dotX = centerX + (currentX / xRange) * (width - 2 * padding)
+    const dotY = centerY - (currentY / yRange) * (height - 2 * padding)
+    
+    ctx.strokeStyle = '#2196F3'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(otherDotX, otherDotY)
+    ctx.lineTo(dotX, dotY)
+    ctx.stroke()
+  } else if (hasSelectedStart.value && props.mode === 'double') {
+    const startX = startPoint.value.x
+    const startY = startPoint.value.y
+    const startDotX = centerX + (startX / xRange) * (width - 2 * padding)
+    const startDotY = centerY - (startY / yRange) * (height - 2 * padding)
+    
+    const currentX = snappedX.value
+    const currentY = snappedY.value
+    const dotX = centerX + (currentX / xRange) * (width - 2 * padding)
+    const dotY = centerY - (currentY / yRange) * (height - 2 * padding)
+    
+    ctx.strokeStyle = '#4CAF50'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(startDotX, startDotY)
+    ctx.lineTo(dotX, dotY)
+    ctx.stroke()
+  }
+  
   const currentX = snappedX.value
   const currentY = snappedY.value
   const dotX = centerX + (currentX / xRange) * (width - 2 * padding)
@@ -163,8 +228,29 @@ function handleMouseLeave() {
 }
 
 function handleClick() {
-  emit('update:modelValue', { x: snappedX.value, y: snappedY.value })
-  emit('update:visible', false)
+  const selectedPoint = { x: snappedX.value, y: snappedY.value }
+  
+  if (props.mode === 'double') {
+    if (!hasSelectedStart.value) {
+      startPoint.value = selectedPoint
+      hasSelectedStart.value = true
+      emit('select-start', selectedPoint)
+      drawGrid()
+    } else {
+      emit('select-end', selectedPoint)
+      emit('update:visible', false)
+    }
+  } else if (props.mode === 'edit') {
+    if (props.editTarget === 'start') {
+      emit('select-start', selectedPoint)
+    } else {
+      emit('select-end', selectedPoint)
+    }
+    emit('update:visible', false)
+  } else {
+    emit('update:modelValue', selectedPoint)
+    emit('update:visible', false)
+  }
 }
 
 function handleClose() {
@@ -189,7 +275,7 @@ onUnmounted(() => {
   <div v-if="visible" class="coordinate-picker-overlay">
     <div class="coordinate-picker">
       <div class="picker-header">
-        <span>选择坐标</span>
+        <span>{{ mode === 'double' && !hasSelectedStart ? '选择 Start 坐标' : mode === 'double' && hasSelectedStart ? '选择 End 坐标' : '选择坐标' }}</span>
         <button @click="handleClose" class="close-btn">×</button>
       </div>
       <div class="picker-content">
