@@ -11,9 +11,9 @@ function createWindow() {
     height: 900,
     frame: false, // 隐藏默认标题栏
     webPreferences: {
-      // 启用Node.js集成
-      nodeIntegration: true,
-      contextIsolation: false,
+      // 禁用Node.js集成，使用contextBridge安全地暴露API
+      nodeIntegration: false,
+      contextIsolation: true,
       // 预加载脚本
       preload: path.join(__dirname, 'preload.js')
     }
@@ -27,9 +27,9 @@ function createWindow() {
     // 开发环境打开开发者工具
     mainWindow.webContents.openDevTools();
   } else {
-    // 生产环境加载根目录的HTML文件
-    const indexPath = path.join(__dirname, '../index.html');
-    const appPath = path.join(process.resourcesPath, 'app', 'index.html');
+    // 生产环境加载dist目录的HTML文件
+    const indexPath = path.join(__dirname, '../dist/index.html');
+    const appPath = path.join(process.resourcesPath, 'app', 'dist', 'index.html');
     
     // 尝试不同的路径
     if (require('fs').existsSync(indexPath)) {
@@ -82,4 +82,25 @@ app.on('activate', () => {
 // 监听退出请求
 ipcMain.on('quit-app', () => {
   app.quit();
+});
+
+// 注册全局快捷键打开开发者工具
+const { globalShortcut } = require('electron');
+
+app.whenReady().then(() => {
+  // 注册快捷键：Ctrl+Alt+Shift+\
+  const ret = globalShortcut.register('Ctrl+Alt+Shift+\\', () => {
+    if (mainWindow) {
+      mainWindow.webContents.openDevTools();
+    }
+  });
+
+  if (!ret) {
+    console.log('快捷键注册失败');
+  }
+});
+
+// 应用退出时解除快捷键
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });

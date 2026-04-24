@@ -21,6 +21,7 @@ const emit = defineEmits<{
   remove: [id: number]
   update: [id: number, field: keyof Segment, value: number | string | boolean]
   'toggle-linked': [id: number, linked: boolean]
+  'open-vector-modal': []
 }>()
 </script>
 
@@ -28,7 +29,10 @@ const emit = defineEmits<{
   <div class="segment-list">
     <div class="section-title">
       <span>事件</span>
-      <button @click="emit('add')">+ 添加</button>
+      <div class="section-buttons">
+        <button @click="emit('add')">+ 添加</button>
+        <button @click="emit('open-vector-modal')" class="vector-modal-btn">统一事件操作</button>
+      </div>
     </div>
     <div class="segments-container">
       <SegmentEditor
@@ -68,6 +72,12 @@ const emit = defineEmits<{
   color: $accent;
   border-bottom: 1px solid $border;
 
+  .section-buttons {
+    display: flex;
+    gap: $spacing-md;
+    align-items: center;
+  }
+
   button {
     font-size: $font-size-base;
     padding: $spacing-sm $spacing-xl;
@@ -80,6 +90,12 @@ const emit = defineEmits<{
     &:hover {
       background: $accent-hover;
     }
+  }
+
+  .vector-modal-btn {
+    background: $bg-tertiary;
+    color: $accent;
+    border: 1px solid $accent;
   }
 }
 

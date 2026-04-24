@@ -192,6 +192,27 @@ export function useSegments() {
         seg.endX = -seg.endX
       }
     })
+    
+    // 取消当前事件和下一个事件的链接
+    if (ids && ids.length > 0) {
+      ids.forEach(id => {
+        const idx = segments.value.findIndex(s => s.id === id)
+        if (idx !== -1) {
+          // 取消当前事件的链接
+          const currentSeg = segments.value[idx]
+          if (currentSeg) {
+            currentSeg.linked = false
+          }
+          // 取消下一个事件的链接
+          if (idx < segments.value.length - 1) {
+            const nextSeg = segments.value[idx + 1]
+            if (nextSeg) {
+              nextSeg.linked = false
+            }
+          }
+        }
+      })
+    }
   }
 
   function mirrorVertical(ids?: number[]) {
@@ -203,6 +224,27 @@ export function useSegments() {
         seg.endY = -seg.endY
       }
     })
+    
+    // 取消当前事件和下一个事件的链接
+    if (ids && ids.length > 0) {
+      ids.forEach(id => {
+        const idx = segments.value.findIndex(s => s.id === id)
+        if (idx !== -1) {
+          // 取消当前事件的链接
+          const currentSeg = segments.value[idx]
+          if (currentSeg) {
+            currentSeg.linked = false
+          }
+          // 取消下一个事件的链接
+          if (idx < segments.value.length - 1) {
+            const nextSeg = segments.value[idx + 1]
+            if (nextSeg) {
+              nextSeg.linked = false
+            }
+          }
+        }
+      })
+    }
   }
 
   function mirrorDiagonal(ids?: number[]) {
@@ -216,6 +258,27 @@ export function useSegments() {
         seg.endY = -seg.endY
       }
     })
+    
+    // 取消当前事件和下一个事件的链接
+    if (ids && ids.length > 0) {
+      ids.forEach(id => {
+        const idx = segments.value.findIndex(s => s.id === id)
+        if (idx !== -1) {
+          // 取消当前事件的链接
+          const currentSeg = segments.value[idx]
+          if (currentSeg) {
+            currentSeg.linked = false
+          }
+          // 取消下一个事件的链接
+          if (idx < segments.value.length - 1) {
+            const nextSeg = segments.value[idx + 1]
+            if (nextSeg) {
+              nextSeg.linked = false
+            }
+          }
+        }
+      })
+    }
   }
 
   function rotate(angle: number, rotationCenter: 'start' | 'center' | 'end' = 'center', ids?: number[]) {
@@ -223,11 +286,45 @@ export function useSegments() {
     const cos = Math.cos(rad)
     const sin = Math.sin(rad)
     
-    const targetIds = ids ?? segments.value.map(s => s.id)
+    // 全局路径旋转：以第一个事件的起点为旋转中心
+    if (!ids) {
+      const allIds = segments.value.map(s => s.id)
+      if (allIds.length === 0) return
+      
+      // 使用第一个事件的起点作为全局旋转中心
+      const firstSeg = segments.value[0]
+      if (!firstSeg) return
+      
+      const cx = firstSeg.startX
+      const cy = firstSeg.startY
+      
+      // 对所有事件应用旋转
+      segments.value.forEach(seg => {
+        // Rotate start point
+        const startDx = seg.startX - cx
+        const startDy = seg.startY - cy
+        const newStartX = cx + (startDx * cos - startDy * sin)
+        const newStartY = cy + (startDx * sin + startDy * cos)
+        
+        // Rotate end point
+        const endDx = seg.endX - cx
+        const endDy = seg.endY - cy
+        const newEndX = cx + (endDx * cos - endDy * sin)
+        const newEndY = cy + (endDx * sin + endDy * cos)
+        
+        seg.startX = Math.min(Math.max(parseFloat(newStartX.toFixed(2)), -10), 10)
+        seg.startY = Math.min(Math.max(parseFloat(newStartY.toFixed(2)), -10), 10)
+        seg.endX = Math.min(Math.max(parseFloat(newEndX.toFixed(2)), -10), 10)
+        seg.endY = Math.min(Math.max(parseFloat(newEndY.toFixed(2)), -10), 10)
+      })
+      return
+    }
+    
+    // 单个/多个事件旋转：基于每个事件的中心或指定的旋转中心
+    const targetIds = ids
     targetIds.forEach(id => {
       const seg = segments.value.find(s => s.id === id)
       if (seg) {
-        // Calculate rotation center based on selected option
         let cx = 0
         let cy = 0
         
@@ -247,13 +344,11 @@ export function useSegments() {
             break
         }
         
-        // Rotate start point
         const startDx = seg.startX - cx
         const startDy = seg.startY - cy
         const newStartX = cx + (startDx * cos - startDy * sin)
         const newStartY = cy + (startDx * sin + startDy * cos)
         
-        // Rotate end point
         const endDx = seg.endX - cx
         const endDy = seg.endY - cy
         const newEndX = cx + (endDx * cos - endDy * sin)
@@ -265,6 +360,25 @@ export function useSegments() {
         seg.endY = Math.min(Math.max(parseFloat(newEndY.toFixed(2)), -10), 10)
       }
     })
+    
+    // 取消当前事件和下一个事件的链接
+    if (ids && ids.length > 0) {
+      ids.forEach(id => {
+        const idx = segments.value.findIndex(s => s.id === id)
+        if (idx !== -1) {
+          const currentSeg = segments.value[idx]
+          if (currentSeg) {
+            currentSeg.linked = false
+          }
+          if (idx < segments.value.length - 1) {
+            const nextSeg = segments.value[idx + 1]
+            if (nextSeg) {
+              nextSeg.linked = false
+            }
+          }
+        }
+      })
+    }
   }
 
   function translate(dx: number, dy: number, ids?: number[]) {
@@ -278,6 +392,27 @@ export function useSegments() {
         seg.endY += dy
       }
     })
+    
+    // 取消当前事件和下一个事件的链接
+    if (ids && ids.length > 0) {
+      ids.forEach(id => {
+        const idx = segments.value.findIndex(s => s.id === id)
+        if (idx !== -1) {
+          // 取消当前事件的链接
+          const currentSeg = segments.value[idx]
+          if (currentSeg) {
+            currentSeg.linked = false
+          }
+          // 取消下一个事件的链接
+          if (idx < segments.value.length - 1) {
+            const nextSeg = segments.value[idx + 1]
+            if (nextSeg) {
+              nextSeg.linked = false
+            }
+          }
+        }
+      })
+    }
   }
 
   function scale(sx: number, sy: number, ids?: number[]) {
@@ -291,6 +426,27 @@ export function useSegments() {
         seg.endY *= sy
       }
     })
+    
+    // 取消当前事件和下一个事件的链接
+    if (ids && ids.length > 0) {
+      ids.forEach(id => {
+        const idx = segments.value.findIndex(s => s.id === id)
+        if (idx !== -1) {
+          // 取消当前事件的链接
+          const currentSeg = segments.value[idx]
+          if (currentSeg) {
+            currentSeg.linked = false
+          }
+          // 取消下一个事件的链接
+          if (idx < segments.value.length - 1) {
+            const nextSeg = segments.value[idx + 1]
+            if (nextSeg) {
+              nextSeg.linked = false
+            }
+          }
+        }
+      })
+    }
   }
 
   return {

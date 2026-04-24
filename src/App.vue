@@ -4,6 +4,7 @@ import SegmentList from '@/components/SegmentList.vue'
 import JsonOutput from '@/components/JsonOutput.vue'
 import PreviewCanvas from '@/components/PreviewCanvas.vue'
 import PlayerControls from '@/components/PlayerControls.vue'
+import VectorModal from '@/components/VectorModal.vue'
 import { useSegments } from '@/composables/useSegments'
 import { useAnimation } from '@/composables/useAnimation'
 import { segmentsToJsonString } from '@/utils/positionJson'
@@ -12,8 +13,10 @@ const { segments, addSegment, removeSegment, updateField, toggleLinked, maxEndTi
 const { currentTime, playing, togglePlay, reset, getPointAtTime } = useAnimation()
 
 const timeUnit = ref<'milliseconds' | 'seconds'>('seconds')
+const isFullscreen = ref(false)
 const bpm = ref(120)
 const useBpmMode = ref(false)
+const showVectorModal = ref(false)
 
 const jsonOutput = computed(() => segmentsToJsonString(segments.value, timeUnit.value))
 
@@ -40,13 +43,55 @@ function handleParseJson(json: any) {
 }
 
 function handleExit() {
-  // 在Electron环境中，退出应用
-  if (typeof window !== 'undefined' && (window as any).process && (window as any).process.versions && (window as any).process.versions.electron) {
-    // 直接关闭窗口
-    window.close()
+  if (typeof window !== 'undefined' && (window as any).electron && (window as any).electron.app) {
+    (window as any).electron.app.quit()
   } else {
-    // 在浏览器环境中，刷新页面
     window.location.reload()
+  }
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().then(() => {
+      isFullscreen.value = true
+    }).catch((err) => {
+      console.error('Fullscreen error:', err)
+    })
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen().then(() => {
+        isFullscreen.value = false
+      }).catch((err) => {
+        console.error('Exit fullscreen error:', err)
+      })
+    }
+  }
+}
+
+function handleOpenVectorModal() {
+  showVectorModal.value = true
+}
+
+function handleVectorExecute(operation: string, params: any) {
+  switch (operation) {
+    case 'mirrorHorizontal':
+      mirrorHorizontal()
+      break
+    case 'mirrorVertical':
+      mirrorVertical()
+      break
+    case 'mirrorDiagonal':
+      mirrorDiagonal()
+      break
+    case 'rotate':
+      rotate(params.angle, params.rotationCenter)
+      break
+    case 'translate':
+      translate(params.dx, params.dy)
+      break
+    case 'scale':
+      scale(params.sx, params.sy)
+      break
   }
 }
 </script>
@@ -54,7 +99,10 @@ function handleExit() {
 <template>
   <header class="app-header">
     <h1>JSON Position Tool</h1>
-    <button class="exit-button" @click="handleExit">退出</button>
+    <div class="header-buttons">
+      <button class="fullscreen-button" @click="toggleFullscreen">{{ isFullscreen ? '退出全屏' : '全屏' }}</button>
+      <button class="exit-button" @click="handleExit">退出</button>
+    </div>
   </header>
   <main class="app-main">
     <div class="left-panel">
@@ -77,6 +125,7 @@ function handleExit() {
     @remove="(id: number) => removeSegment(id)"
     @update="updateField"
     @toggle-linked="toggleLinked"
+    @open-vector-modal="handleOpenVectorModal"
   />
 </div>
     <div class="right-panel">
@@ -97,6 +146,10 @@ function handleExit() {
       />
     </div>
   </main>
+  <VectorModal
+    v-model:visible="showVectorModal"
+    @execute="handleVectorExecute"
+  />
 </template>
 
 <style lang="scss" scoped>
@@ -112,10 +165,15 @@ function handleExit() {
   border-bottom: 2px solid $border;
 
   h1 {
-    text-align: center;
     color: $accent;
     font-size: $font-size-lg;
     margin: 0;
+  }
+
+  .header-buttons {
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
 
   .exit-button {
@@ -130,6 +188,22 @@ function handleExit() {
 
     &:hover {
       background: $danger-hover;
+    }
+  }
+
+  .fullscreen-button {
+    background: transparent;
+    color: $danger;
+    border: 1px solid $danger;
+    padding: $spacing-sm $spacing-xl;
+    border-radius: $border-radius;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: $font-size-base;
+
+    &:hover {
+      background: $danger;
+      color: white;
     }
   }
 }

@@ -23,6 +23,32 @@ body {
   overflow: hidden;
 }
 
+/* 全屏模式样式 */
+html:fullscreen,
+html:-webkit-full-screen,
+html:-moz-full-screen {
+  background: $bg-primary;
+  overflow: hidden;
+}
+
+body:fullscreen,
+body:-webkit-full-screen,
+body:-moz-full-screen {
+  background: $bg-primary;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+#app:fullscreen,
+#app:-webkit-full-screen,
+#app:-moz-full-screen {
+  height: 100%;
+  width: 100%;
+  background: $bg-primary;
+  overflow: hidden;
+}
+
 /* 美化滚动条 */
 ::-webkit-scrollbar {
   width: 8px;

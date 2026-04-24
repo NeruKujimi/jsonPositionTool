@@ -52,9 +52,10 @@ export function usePreview(canvasRef: Ref<HTMLCanvasElement | null>) {
       for (const v of [s.startY, s.endY]) { if (v < minY) minY = v; if (v > maxY) maxY = v }
     }
 
-    const rangeX = maxX - minX || 1
-    const rangeY = maxY - minY || 1
-    const padding = 50
+    // 确保坐标范围至少有一定大小，避免缩放比例过大或过小
+    const rangeX = Math.max(1, maxX - minX)
+    const rangeY = Math.max(1, maxY - minY)
+    const padding = 40
     const scaleX = (w - padding * 2) / rangeX
     const scaleY = (h - padding * 2) / rangeY
     const scale = Math.min(scaleX, scaleY)

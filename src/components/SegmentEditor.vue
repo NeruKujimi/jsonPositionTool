@@ -39,7 +39,7 @@ const endBeat = ref(0)
 
 const linkNote = computed(() =>
   props.segment.linked && !props.isFirst
-    ? '* Linked to previous segment (start values auto-filled)'
+    ? '勾选链接后，当前事件的开始时间和起点会自动继承上个事件的结束时间与终点'
     : ''
 )
 
