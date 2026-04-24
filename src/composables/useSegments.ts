@@ -26,6 +26,23 @@ export function useSegments() {
   function removeSegment(id: number) {
     const idx = segments.value.findIndex(s => s.id === id)
     if (idx === -1) return
+    
+    const removedSeg = segments.value[idx]!
+    
+    // Check if we need to unlink adjacent segments
+    const hasPrev = idx > 0
+    const hasNext = idx < segments.value.length - 1
+    
+    // If the removed segment was linked, and there are segments before and after,
+    // we need to check if we should unlink the next segment
+    if (hasPrev && hasNext) {
+      const nextSeg = segments.value[idx + 1]!
+      if (nextSeg.linked) {
+        // Unlink the next segment since its previous is being removed
+        nextSeg.linked = false
+      }
+    }
+    
     segments.value.splice(idx, 1)
   }
 
@@ -33,6 +50,19 @@ export function useSegments() {
     const seg = segments.value.find(s => s.id === id)
     if (!seg) return
     ;(seg as Record<string, unknown>)[field] = value
+    
+    // If modifying start coordinates and linked, update previous segment's end coordinates
+    if (seg.linked && (field === 'startX' || field === 'startY' || field === 'startTime')) {
+      const idx = segments.value.indexOf(seg)
+      if (idx > 0) {
+        const prev = segments.value[idx - 1]!
+        if (field === 'startX') prev.endX = seg.startX
+        if (field === 'startY') prev.endY = seg.startY
+        if (field === 'startTime') prev.endTime = seg.startTime
+      }
+    }
+    
+    // If modifying end coordinates, propagate to next linked segments
     if (field === 'endTime' || field === 'endX' || field === 'endY') {
       propagateLink(seg)
     }
