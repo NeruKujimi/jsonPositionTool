@@ -92,8 +92,8 @@ function drawGrid() {
   const centerX = width / 2
   const centerY = height / 2
   
-  ctx.strokeStyle = '#333'
-  ctx.lineWidth = 1
+  ctx.strokeStyle = '#ff6b6b'
+  ctx.lineWidth = 2
   
   ctx.beginPath()
   ctx.moveTo(padding, centerY)
@@ -146,6 +146,26 @@ function drawGrid() {
     ctx.stroke()
   }
   
+  ctx.setLineDash([])
+  
+  // Draw green recommended area box
+  ctx.strokeStyle = '#4CAF50'
+  ctx.lineWidth = 2
+  ctx.setLineDash([5, 5])
+  
+  const recommendedXMin = -8
+  const recommendedXMax = 8
+  const recommendedYMin = -8
+  const recommendedYMax = 8
+  
+  const recLeft = centerX + (recommendedXMin / xRange) * (width - 2 * padding)
+  const recTop = centerY - (recommendedYMax / yRange) * (height - 2 * padding)
+  const recWidth = (recommendedXMax - recommendedXMin) / xRange * (width - 2 * padding)
+  const recHeight = (recommendedYMax - recommendedYMin) / yRange * (height - 2 * padding)
+  
+  ctx.beginPath()
+  ctx.rect(recLeft, recTop, recWidth, recHeight)
+  ctx.stroke()
   ctx.setLineDash([])
   
   ctx.fillStyle = '#aaa'
@@ -349,8 +369,7 @@ onUnmounted(() => {
   border: 1px solid $border;
   border-radius: 8px;
   width: 80vw;
-  height: 80vh;
-  max-width: 800px;
+  max-width: 960px;
   max-height: 600px;
   overflow: hidden;
   display: flex;
@@ -417,6 +436,10 @@ onUnmounted(() => {
   background: $bg-canvas;
   border-radius: 4px;
   cursor: crosshair;
+  
+  /* Ensure 16:9 aspect ratio for the canvas */
+  aspect-ratio: 16/9;
+  max-height: 400px;
 }
 
 .coordinate-display {
