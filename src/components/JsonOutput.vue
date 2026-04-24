@@ -14,6 +14,7 @@ const emit = defineEmits<{
 const copied = ref(false)
 const jsonText = ref(props.json)
 const hasChanges = ref(false)
+const saveFailed = ref(false)
 
 function copyToClipboard() {
   navigator.clipboard.writeText(props.json).then(() => {
@@ -31,6 +32,7 @@ function handleJsonInput(event: Event) {
   const target = event.target as HTMLTextAreaElement
   jsonText.value = target.value
   hasChanges.value = true
+  saveFailed.value = false
 }
 
 function handleSave() {
@@ -38,9 +40,10 @@ function handleSave() {
     const parsed = JSON.parse(jsonText.value)
     emit('parse-json', parsed)
     hasChanges.value = false
+    saveFailed.value = false
   } catch (e) {
     console.error('JSON parsing error:', e)
-    // Ignore parsing errors
+    saveFailed.value = true
   }
 }
 
@@ -48,6 +51,7 @@ function handleSave() {
 watch(() => props.json, (newVal) => {
   jsonText.value = newVal
   hasChanges.value = false
+  saveFailed.value = false
 })
 
 // Initialize
@@ -55,30 +59,38 @@ jsonText.value = props.json
 </script>
 
 <template>
-  <div class="json-section">
-    <div class="section-title">
-      <div class="title-controls">
-        <span>JSON Output</span>
-        <div class="time-unit-selector">
-          <label>Time Unit:</label>
-          <select :value="timeUnit" @change="handleTimeUnitChange">
-            <option value="milliseconds">Milliseconds</option>
-            <option value="seconds">Seconds</option>
-          </select>
+  <div class="json-section-container">
+    <div class="json-section">
+      <div class="section-title">
+        <div class="title-controls">
+          <span>JSON Output</span>
+          <div class="time-unit-selector">
+            <label>Time Unit:</label>
+            <select :value="timeUnit" @change="handleTimeUnitChange">
+              <option value="milliseconds">Milliseconds</option>
+              <option value="seconds">Seconds</option>
+            </select>
+          </div>
+        </div>
+        <div class="section-buttons">
+          <button @click="handleSave" v-if="hasChanges" :class="['save-btn', { 'save-failed': saveFailed }]">{{ saveFailed ? 'Fail' : 'Save' }}</button>
+          <button @click="copyToClipboard">{{ copied ? 'Copied!' : 'Copy' }}</button>
         </div>
       </div>
-      <div class="section-buttons">
-        <button @click="handleSave" v-if="hasChanges" class="save-btn">Save</button>
-        <button @click="copyToClipboard">{{ copied ? 'Copied!' : 'Copy' }}</button>
-      </div>
+      <textarea class="json-output" v-model="jsonText" @input="handleJsonInput"></textarea>
     </div>
-    <textarea class="json-output" v-model="jsonText" @input="handleJsonInput"></textarea>
   </div>
 </template>
 
 <style lang="scss" scoped>
 @use '@/styles/variables' as *;
 @use '@/styles/mixins' as *;
+
+.json-section-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
 
 .json-section {
   flex: 1;
@@ -145,6 +157,17 @@ jsonText.value = props.json
     &:hover {
       background: $success-bg;
       opacity: 0.8;
+    }
+    
+    &.save-failed {
+      background: $danger-bg;
+      border-color: $danger;
+      color: $danger;
+      
+      &:hover {
+        background: $danger-bg;
+        opacity: 0.8;
+      }
     }
   }
 }
