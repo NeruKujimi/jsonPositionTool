@@ -11,6 +11,14 @@ const props = defineProps<{
   isFirst: boolean
   bpm: number
   useBpmMode: boolean
+  vectorOps?: {
+    mirrorHorizontal: (ids?: number[]) => void
+    mirrorVertical: (ids?: number[]) => void
+    mirrorDiagonal: (ids?: number[]) => void
+    rotate: (angle: number, rotationCenter: 'start' | 'center' | 'end', ids?: number[]) => void
+    translate: (dx: number, dy: number, ids?: number[]) => void
+    scale: (sx: number, sy: number, ids?: number[]) => void
+  }
 }>()
 
 const emit = defineEmits<{
@@ -139,6 +147,51 @@ function handlePickerClose() {
   showCoordinatePicker.value = false
   currentPickerTarget.value = null
 }
+
+function handleMirrorHorizontal() {
+  if (props.vectorOps) {
+    props.vectorOps.mirrorHorizontal([props.segment.id])
+  }
+}
+
+function handleMirrorVertical() {
+  if (props.vectorOps) {
+    props.vectorOps.mirrorVertical([props.segment.id])
+  }
+}
+
+function handleMirrorDiagonal() {
+  if (props.vectorOps) {
+    props.vectorOps.mirrorDiagonal([props.segment.id])
+  }
+}
+
+const rotateAngle = ref(90)
+const rotationCenter = ref<'start' | 'center' | 'end'>('center')
+
+function handleRotate() {
+  if (props.vectorOps) {
+    props.vectorOps.rotate(rotateAngle.value, rotationCenter.value, [props.segment.id])
+  }
+}
+
+const translateDx = ref(0)
+const translateDy = ref(0)
+
+function handleTranslate() {
+  if (props.vectorOps) {
+    props.vectorOps.translate(translateDx.value, translateDy.value, [props.segment.id])
+  }
+}
+
+const scaleSx = ref(1)
+const scaleSy = ref(1)
+
+function handleScale() {
+  if (props.vectorOps) {
+    props.vectorOps.scale(scaleSx.value, scaleSy.value, [props.segment.id])
+  }
+}
 </script>
 
 <template>
@@ -188,6 +241,50 @@ function handlePickerClose() {
     </div>
     <div v-if="showPreview" class="ease-preview-container">
       <EasePreview :ease-name="segment.easeType" />
+    </div>
+    <div v-if="vectorOps" class="vector-ops-container">
+      <div class="vector-ops-title">向量操作</div>
+      <div class="vector-ops-section">
+        <div class="vector-ops-label">镜像</div>
+        <div class="vector-ops-buttons">
+          <button @click="handleMirrorHorizontal" class="vector-btn">水平镜像</button>
+          <button @click="handleMirrorVertical" class="vector-btn">垂直镜像</button>
+          <button @click="handleMirrorDiagonal" class="vector-btn">对角镜像</button>
+        </div>
+      </div>
+      <div class="vector-ops-section">
+        <div class="vector-ops-label">旋转</div>
+        <div class="vector-ops-inputs">
+          <input type="number" v-model.number="rotateAngle" step="15" />
+          <span>度</span>
+          <select v-model="rotationCenter" class="rotation-center-select">
+            <option value="start">绕起点</option>
+            <option value="center">绕中心</option>
+            <option value="end">绕终点</option>
+          </select>
+          <button @click="handleRotate" class="vector-btn">旋转</button>
+        </div>
+      </div>
+      <div class="vector-ops-section">
+        <div class="vector-ops-label">平移</div>
+        <div class="vector-ops-inputs">
+          <label>DX:</label>
+          <input type="number" v-model.number="translateDx" step="0.5" />
+          <label>DY:</label>
+          <input type="number" v-model.number="translateDy" step="0.5" />
+          <button @click="handleTranslate" class="vector-btn">平移</button>
+        </div>
+      </div>
+      <div class="vector-ops-section">
+        <div class="vector-ops-label">缩放</div>
+        <div class="vector-ops-inputs">
+          <label>SX:</label>
+          <input type="number" v-model.number="scaleSx" step="0.1" />
+          <label>SY:</label>
+          <input type="number" v-model.number="scaleSy" step="0.1" />
+          <button @click="handleScale" class="vector-btn">缩放</button>
+        </div>
+      </div>
     </div>
     <div v-if="linkNote" class="seg-link">{{ linkNote }}</div>
     <CoordinatePicker 
@@ -353,5 +450,73 @@ function handlePickerClose() {
   color: $accent;
   font-size: $font-size-xs;
   font-style: italic;
+}
+
+.vector-ops-container {
+  margin-top: $spacing-md;
+  padding: $spacing-md;
+  background: $bg-primary;
+  border: 1px solid $border;
+  border-radius: 4px;
+}
+
+.vector-ops-title {
+  font-weight: bold;
+  color: $accent;
+  margin-bottom: $spacing-md;
+  font-size: $font-size-base;
+}
+
+.vector-ops-section {
+  margin-bottom: $spacing-md;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.vector-ops-label {
+  color: $text-secondary;
+  font-size: $font-size-sm;
+  margin-bottom: $spacing-sm;
+}
+
+.vector-ops-buttons {
+  display: flex;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+}
+
+.vector-ops-inputs {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+  
+  label {
+    color: $text-secondary;
+    font-size: $font-size-sm;
+  }
+  
+  input[type="number"] {
+    @include input-base;
+    width: $input-width-sm;
+  }
+  
+  span {
+    color: $text-secondary;
+    font-size: $font-size-sm;
+  }
+  
+  .rotation-center-select {
+    @include input-base;
+    width: 120px;
+  }
+}
+
+.vector-btn {
+  @include button-base;
+  font-size: $font-size-sm;
+  padding: $spacing-xs $spacing-sm;
 }
 </style>

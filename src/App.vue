@@ -8,7 +8,7 @@ import { useSegments } from '@/composables/useSegments'
 import { useAnimation } from '@/composables/useAnimation'
 import { segmentsToJsonString } from '@/utils/positionJson'
 
-const { segments, addSegment, removeSegment, updateField, toggleLinked, maxEndTime, parseJson } = useSegments()
+const { segments, addSegment, removeSegment, updateField, toggleLinked, maxEndTime, parseJson, mirrorHorizontal, mirrorVertical, mirrorDiagonal, rotate, translate, scale } = useSegments()
 const { currentTime, playing, togglePlay, reset, getPointAtTime } = useAnimation()
 
 const timeUnit = ref<'milliseconds' | 'seconds'>('milliseconds')
@@ -60,6 +60,7 @@ function handleParseJson(json: any) {
     :segments="segments"
     :bpm="bpm"
     :use-bpm-mode="useBpmMode"
+    :vector-ops="{ mirrorHorizontal, mirrorVertical, mirrorDiagonal, rotate, translate, scale }"
     @add="handleAddSegment"
     @remove="(id: number) => removeSegment(id)"
     @update="updateField"

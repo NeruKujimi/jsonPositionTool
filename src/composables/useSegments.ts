@@ -183,6 +183,116 @@ export function useSegments() {
     return Math.max(...segments.value.map(s => s.endTime))
   })
 
+  function mirrorHorizontal(ids?: number[]) {
+    const targetIds = ids ?? segments.value.map(s => s.id)
+    targetIds.forEach(id => {
+      const seg = segments.value.find(s => s.id === id)
+      if (seg) {
+        seg.startX = -seg.startX
+        seg.endX = -seg.endX
+      }
+    })
+  }
+
+  function mirrorVertical(ids?: number[]) {
+    const targetIds = ids ?? segments.value.map(s => s.id)
+    targetIds.forEach(id => {
+      const seg = segments.value.find(s => s.id === id)
+      if (seg) {
+        seg.startY = -seg.startY
+        seg.endY = -seg.endY
+      }
+    })
+  }
+
+  function mirrorDiagonal(ids?: number[]) {
+    const targetIds = ids ?? segments.value.map(s => s.id)
+    targetIds.forEach(id => {
+      const seg = segments.value.find(s => s.id === id)
+      if (seg) {
+        seg.startX = -seg.startX
+        seg.startY = -seg.startY
+        seg.endX = -seg.endX
+        seg.endY = -seg.endY
+      }
+    })
+  }
+
+  function rotate(angle: number, rotationCenter: 'start' | 'center' | 'end' = 'center', ids?: number[]) {
+    const rad = (angle * Math.PI) / 180
+    const cos = Math.cos(rad)
+    const sin = Math.sin(rad)
+    
+    const targetIds = ids ?? segments.value.map(s => s.id)
+    targetIds.forEach(id => {
+      const seg = segments.value.find(s => s.id === id)
+      if (seg) {
+        // Calculate rotation center based on selected option
+        let cx = 0
+        let cy = 0
+        
+        switch (rotationCenter) {
+          case 'start':
+            cx = seg.startX
+            cy = seg.startY
+            break
+          case 'end':
+            cx = seg.endX
+            cy = seg.endY
+            break
+          case 'center':
+          default:
+            cx = (seg.startX + seg.endX) / 2
+            cy = (seg.startY + seg.endY) / 2
+            break
+        }
+        
+        // Rotate start point
+        const startDx = seg.startX - cx
+        const startDy = seg.startY - cy
+        const newStartX = cx + (startDx * cos - startDy * sin)
+        const newStartY = cy + (startDx * sin + startDy * cos)
+        
+        // Rotate end point
+        const endDx = seg.endX - cx
+        const endDy = seg.endY - cy
+        const newEndX = cx + (endDx * cos - endDy * sin)
+        const newEndY = cy + (endDx * sin + endDy * cos)
+        
+        seg.startX = Math.min(Math.max(parseFloat(newStartX.toFixed(2)), -10), 10)
+        seg.startY = Math.min(Math.max(parseFloat(newStartY.toFixed(2)), -10), 10)
+        seg.endX = Math.min(Math.max(parseFloat(newEndX.toFixed(2)), -10), 10)
+        seg.endY = Math.min(Math.max(parseFloat(newEndY.toFixed(2)), -10), 10)
+      }
+    })
+  }
+
+  function translate(dx: number, dy: number, ids?: number[]) {
+    const targetIds = ids ?? segments.value.map(s => s.id)
+    targetIds.forEach(id => {
+      const seg = segments.value.find(s => s.id === id)
+      if (seg) {
+        seg.startX += dx
+        seg.startY += dy
+        seg.endX += dx
+        seg.endY += dy
+      }
+    })
+  }
+
+  function scale(sx: number, sy: number, ids?: number[]) {
+    const targetIds = ids ?? segments.value.map(s => s.id)
+    targetIds.forEach(id => {
+      const seg = segments.value.find(s => s.id === id)
+      if (seg) {
+        seg.startX *= sx
+        seg.startY *= sy
+        seg.endX *= sx
+        seg.endY *= sy
+      }
+    })
+  }
+
   return {
     segments,
     addSegment,
@@ -191,5 +301,11 @@ export function useSegments() {
     toggleLinked,
     maxEndTime,
     parseJson,
+    mirrorHorizontal,
+    mirrorVertical,
+    mirrorDiagonal,
+    rotate,
+    translate,
+    scale,
   }
 }

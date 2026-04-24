@@ -6,6 +6,14 @@ defineProps<{
   segments: Segment[]
   bpm: number
   useBpmMode: boolean
+  vectorOps?: {
+    mirrorHorizontal: (ids?: number[]) => void
+    mirrorVertical: (ids?: number[]) => void
+    mirrorDiagonal: (ids?: number[]) => void
+    rotate: (angle: number, rotationCenter: 'start' | 'center' | 'end', ids?: number[]) => void
+    translate: (dx: number, dy: number, ids?: number[]) => void
+    scale: (sx: number, sy: number, ids?: number[]) => void
+  }
 }>()
 
 const emit = defineEmits<{
@@ -31,6 +39,7 @@ const emit = defineEmits<{
         :is-first="index === 0"
         :bpm="bpm"
         :use-bpm-mode="useBpmMode"
+        :vector-ops="vectorOps"
         @remove="emit('remove', $event)"
         @update="(id, field, value) => emit('update', id, field, value)"
         @toggle-linked="(id, linked) => emit('toggle-linked', id, linked)"
