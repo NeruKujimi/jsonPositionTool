@@ -1,17 +1,21 @@
 import { ref, computed } from 'vue'
-import type { Segment } from '@/types'
+import type { Segment, SegmentGroup } from '@/types'
 
 let idCounter = 0
+let groupIdCounter = 0
 
 export function useSegments() {
   const segments = ref<Segment[]>([])
+  const groups = ref<SegmentGroup[]>([])
+  const activeGroupId = ref<number | null>(null)
 
   function addSegment(opts?: Partial<Segment>) {
     const prev = segments.value.length > 0 ? segments.value[segments.value.length - 1] : null
+    const prevDuration = prev ? prev.endTime - prev.startTime : 1000
     const seg: Segment = {
       id: idCounter++,
       startTime: opts?.startTime ?? (prev ? prev.endTime : 0),
-      endTime: opts?.endTime ?? (prev ? prev.endTime + 1000 : 1000),
+      endTime: opts?.endTime ?? (prev ? prev.endTime + prevDuration : 1000),
       startX: opts?.startX ?? (prev ? prev.endX : 0),
       startY: opts?.startY ?? (prev ? prev.endY : 0),
       endX: opts?.endX ?? (prev ? Math.min(Math.max(prev.endX + 2, -10), 10) : 2),
@@ -27,18 +31,17 @@ export function useSegments() {
     const idx = segments.value.findIndex(s => s.id === id)
     if (idx === -1) return
     
-    // const removedSeg = segments.value[idx]!
+    // 从所有分组中移除该事件
+    groups.value.forEach(group => {
+      group.segmentIds = group.segmentIds.filter(sid => sid !== id)
+    })
     
-    // Check if we need to unlink adjacent segments
     const hasPrev = idx > 0
     const hasNext = idx < segments.value.length - 1
     
-    // If the removed segment was linked, and there are segments before and after,
-    // we need to check if we should unlink the next segment
     if (hasPrev && hasNext) {
       const nextSeg = segments.value[idx + 1]!
       if (nextSeg.linked) {
-        // Unlink the next segment since its previous is being removed
         nextSeg.linked = false
       }
     }
@@ -51,7 +54,6 @@ export function useSegments() {
     if (!seg) return
     ;(seg as Record<string, unknown>)[field] = value
     
-    // If modifying start coordinates and linked, update previous segment's end coordinates
     if (seg.linked && (field === 'startX' || field === 'startY' || field === 'startTime')) {
       const idx = segments.value.indexOf(seg)
       if (idx > 0) {
@@ -62,7 +64,6 @@ export function useSegments() {
       }
     }
     
-    // If modifying end coordinates, propagate to next linked segments
     if (field === 'endTime' || field === 'endX' || field === 'endY') {
       propagateLink(seg)
     }
@@ -98,9 +99,110 @@ export function useSegments() {
     }
   }
 
+  function createGroup(name: string, segmentIds: number[]) {
+    const group: SegmentGroup = {
+      id: groupIdCounter++,
+      name,
+      expanded: true,
+      segmentIds,
+    }
+    groups.value.push(group)
+    // 更新 segment 的 groupId
+    segmentIds.forEach(id => {
+      const seg = segments.value.find(s => s.id === id)
+      if (seg) seg.groupId = group.id
+    })
+  }
+
+  function deleteGroup(groupId: number) {
+    const group = groups.value.find(g => g.id === groupId)
+    if (!group) return
+    // 清除 segment 的 groupId
+    group.segmentIds.forEach(id => {
+      const seg = segments.value.find(s => s.id === id)
+      if (seg) seg.groupId = undefined
+    })
+    const idx = groups.value.findIndex(g => g.id === groupId)
+    if (idx !== -1) groups.value.splice(idx, 1)
+    if (activeGroupId.value === groupId) {
+      activeGroupId.value = null
+    }
+  }
+
+  function updateGroup(groupId: number, updates: Partial<SegmentGroup>) {
+    const group = groups.value.find(g => g.id === groupId)
+    if (!group) return
+    Object.assign(group, updates)
+  }
+
+  function addSegmentsToGroup(groupId: number, segmentIds: number[]) {
+    const group = groups.value.find(g => g.id === groupId)
+    if (!group) return
+    group.segmentIds = [...new Set([...group.segmentIds, ...segmentIds])]
+    segmentIds.forEach(id => {
+      const seg = segments.value.find(s => s.id === id)
+      if (seg) seg.groupId = groupId
+    })
+  }
+
+  function removeSegmentsFromGroup(groupId: number, segmentIds: number[]) {
+    const group = groups.value.find(g => g.id === groupId)
+    if (!group) return
+    group.segmentIds = group.segmentIds.filter(id => !segmentIds.includes(id))
+    segmentIds.forEach(id => {
+      const seg = segments.value.find(s => s.id === id)
+      if (seg) seg.groupId = undefined
+    })
+  }
+
+  function toggleGroupExpand(groupId: number) {
+    const group = groups.value.find(g => g.id === groupId)
+    if (group) {
+      group.expanded = !group.expanded
+    }
+  }
+
+  function setActiveGroup(groupId: number | null) {
+    activeGroupId.value = groupId
+  }
+
+  function getGroupSegments(groupId: number): Segment[] {
+    const group = groups.value.find(g => g.id === groupId)
+    if (!group) return []
+    return segments.value.filter(s => group.segmentIds.includes(s.id))
+  }
+
+  function loadSegmentsFromData(data: Segment[], groupsData: SegmentGroup[]) {
+    segments.value = data
+    groups.value = groupsData
+    const maxId = data.reduce((max, s) => Math.max(max, s.id), -1)
+    idCounter = maxId + 1
+    const maxGroupId = groupsData.reduce((max, g) => Math.max(max, g.id), -1)
+    groupIdCounter = maxGroupId + 1
+  }
+
+  function resetAll() {
+    segments.value = []
+    groups.value = []
+    activeGroupId.value = null
+    idCounter = 0
+    groupIdCounter = 0
+  }
+
+  const visibleSegments = computed(() => {
+    if (activeGroupId.value !== null) {
+      return getGroupSegments(activeGroupId.value)
+    }
+    return segments.value
+  })
+
+  const maxEndTime = computed(() => {
+    if (visibleSegments.value.length === 0) return 0
+    return Math.max(...visibleSegments.value.map(s => s.endTime))
+  })
+
   function parseJson(json: any[], timeUnit: 'milliseconds' | 'seconds' = 'milliseconds') {
     segments.value = json.map((item, index) => {
-      // Handle different JSON formats
       let startTime = 0
       let endTime = 1000
       let startX = 0
@@ -110,10 +212,8 @@ export function useSegments() {
       let easeType = 'Linear'
       let linked = index > 0
 
-      // Standard format
       if (item.startTime !== undefined) {
         let timeValue = typeof item.startTime === 'string' ? parseFloat(item.startTime) : item.startTime
-        // Convert to milliseconds if needed
         if (timeUnit === 'seconds') {
           timeValue *= 1000
         }
@@ -121,7 +221,6 @@ export function useSegments() {
       }
       if (item.endTime !== undefined) {
         let timeValue = typeof item.endTime === 'string' ? parseFloat(item.endTime) : item.endTime
-        // Convert to milliseconds if needed
         if (timeUnit === 'seconds') {
           timeValue *= 1000
         }
@@ -149,7 +248,6 @@ export function useSegments() {
         linked = item.followPrevious
       }
 
-      // Alternative format with startPos/endPos
       if (item.startPos) {
         startX = item.startPos.x ?? startX
         startY = item.startPos.y ?? startY
@@ -159,7 +257,6 @@ export function useSegments() {
         endY = item.endPos.y ?? endY
       }
 
-      // Alternative format with easeType under position
       if (item.type === 'position' && item.easeType) {
         easeType = item.easeType
       }
@@ -178,13 +275,8 @@ export function useSegments() {
     })
   }
 
-  const maxEndTime = computed(() => {
-    if (segments.value.length === 0) return 0
-    return Math.max(...segments.value.map(s => s.endTime))
-  })
-
   function mirrorHorizontal(ids?: number[]) {
-    const targetIds = ids ?? segments.value.map(s => s.id)
+    const targetIds = ids ?? visibleSegments.value.map(s => s.id)
     targetIds.forEach(id => {
       const seg = segments.value.find(s => s.id === id)
       if (seg) {
@@ -193,17 +285,14 @@ export function useSegments() {
       }
     })
     
-    // 取消当前事件和下一个事件的链接
     if (ids && ids.length > 0) {
       ids.forEach(id => {
         const idx = segments.value.findIndex(s => s.id === id)
         if (idx !== -1) {
-          // 取消当前事件的链接
           const currentSeg = segments.value[idx]
           if (currentSeg) {
             currentSeg.linked = false
           }
-          // 取消下一个事件的链接
           if (idx < segments.value.length - 1) {
             const nextSeg = segments.value[idx + 1]
             if (nextSeg) {
@@ -216,7 +305,7 @@ export function useSegments() {
   }
 
   function mirrorVertical(ids?: number[]) {
-    const targetIds = ids ?? segments.value.map(s => s.id)
+    const targetIds = ids ?? visibleSegments.value.map(s => s.id)
     targetIds.forEach(id => {
       const seg = segments.value.find(s => s.id === id)
       if (seg) {
@@ -225,17 +314,14 @@ export function useSegments() {
       }
     })
     
-    // 取消当前事件和下一个事件的链接
     if (ids && ids.length > 0) {
       ids.forEach(id => {
         const idx = segments.value.findIndex(s => s.id === id)
         if (idx !== -1) {
-          // 取消当前事件的链接
           const currentSeg = segments.value[idx]
           if (currentSeg) {
             currentSeg.linked = false
           }
-          // 取消下一个事件的链接
           if (idx < segments.value.length - 1) {
             const nextSeg = segments.value[idx + 1]
             if (nextSeg) {
@@ -248,7 +334,7 @@ export function useSegments() {
   }
 
   function mirrorDiagonal(ids?: number[]) {
-    const targetIds = ids ?? segments.value.map(s => s.id)
+    const targetIds = ids ?? visibleSegments.value.map(s => s.id)
     targetIds.forEach(id => {
       const seg = segments.value.find(s => s.id === id)
       if (seg) {
@@ -259,17 +345,14 @@ export function useSegments() {
       }
     })
     
-    // 取消当前事件和下一个事件的链接
     if (ids && ids.length > 0) {
       ids.forEach(id => {
         const idx = segments.value.findIndex(s => s.id === id)
         if (idx !== -1) {
-          // 取消当前事件的链接
           const currentSeg = segments.value[idx]
           if (currentSeg) {
             currentSeg.linked = false
           }
-          // 取消下一个事件的链接
           if (idx < segments.value.length - 1) {
             const nextSeg = segments.value[idx + 1]
             if (nextSeg) {
@@ -286,27 +369,22 @@ export function useSegments() {
     const cos = Math.cos(rad)
     const sin = Math.sin(rad)
     
-    // 全局路径旋转：以第一个事件的起点为旋转中心
     if (!ids) {
-      const allIds = segments.value.map(s => s.id)
+      const allIds = visibleSegments.value.map(s => s.id)
       if (allIds.length === 0) return
       
-      // 使用第一个事件的起点作为全局旋转中心
-      const firstSeg = segments.value[0]
+      const firstSeg = visibleSegments.value[0]
       if (!firstSeg) return
       
       const cx = firstSeg.startX
       const cy = firstSeg.startY
       
-      // 对所有事件应用旋转
-      segments.value.forEach(seg => {
-        // Rotate start point
+      visibleSegments.value.forEach(seg => {
         const startDx = seg.startX - cx
         const startDy = seg.startY - cy
         const newStartX = cx + (startDx * cos - startDy * sin)
         const newStartY = cy + (startDx * sin + startDy * cos)
         
-        // Rotate end point
         const endDx = seg.endX - cx
         const endDy = seg.endY - cy
         const newEndX = cx + (endDx * cos - endDy * sin)
@@ -320,7 +398,6 @@ export function useSegments() {
       return
     }
     
-    // 单个/多个事件旋转：基于每个事件的中心或指定的旋转中心
     const targetIds = ids
     targetIds.forEach(id => {
       const seg = segments.value.find(s => s.id === id)
@@ -361,7 +438,6 @@ export function useSegments() {
       }
     })
     
-    // 取消当前事件和下一个事件的链接
     if (ids && ids.length > 0) {
       ids.forEach(id => {
         const idx = segments.value.findIndex(s => s.id === id)
@@ -382,7 +458,7 @@ export function useSegments() {
   }
 
   function translate(dx: number, dy: number, ids?: number[]) {
-    const targetIds = ids ?? segments.value.map(s => s.id)
+    const targetIds = ids ?? visibleSegments.value.map(s => s.id)
     targetIds.forEach(id => {
       const seg = segments.value.find(s => s.id === id)
       if (seg) {
@@ -393,17 +469,14 @@ export function useSegments() {
       }
     })
     
-    // 取消当前事件和下一个事件的链接
     if (ids && ids.length > 0) {
       ids.forEach(id => {
         const idx = segments.value.findIndex(s => s.id === id)
         if (idx !== -1) {
-          // 取消当前事件的链接
           const currentSeg = segments.value[idx]
           if (currentSeg) {
             currentSeg.linked = false
           }
-          // 取消下一个事件的链接
           if (idx < segments.value.length - 1) {
             const nextSeg = segments.value[idx + 1]
             if (nextSeg) {
@@ -416,7 +489,7 @@ export function useSegments() {
   }
 
   function scale(sx: number, sy: number, ids?: number[]) {
-    const targetIds = ids ?? segments.value.map(s => s.id)
+    const targetIds = ids ?? visibleSegments.value.map(s => s.id)
     targetIds.forEach(id => {
       const seg = segments.value.find(s => s.id === id)
       if (seg) {
@@ -427,17 +500,14 @@ export function useSegments() {
       }
     })
     
-    // 取消当前事件和下一个事件的链接
     if (ids && ids.length > 0) {
       ids.forEach(id => {
         const idx = segments.value.findIndex(s => s.id === id)
         if (idx !== -1) {
-          // 取消当前事件的链接
           const currentSeg = segments.value[idx]
           if (currentSeg) {
             currentSeg.linked = false
           }
-          // 取消下一个事件的链接
           if (idx < segments.value.length - 1) {
             const nextSeg = segments.value[idx + 1]
             if (nextSeg) {
@@ -451,6 +521,9 @@ export function useSegments() {
 
   return {
     segments,
+    groups,
+    activeGroupId,
+    visibleSegments,
     addSegment,
     removeSegment,
     updateField,
@@ -463,5 +536,15 @@ export function useSegments() {
     rotate,
     translate,
     scale,
+    createGroup,
+    deleteGroup,
+    updateGroup,
+    addSegmentsToGroup,
+    removeSegmentsFromGroup,
+    toggleGroupExpand,
+    setActiveGroup,
+    getGroupSegments,
+    loadSegmentsFromData,
+    resetAll,
   }
 }

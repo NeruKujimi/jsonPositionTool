@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import SegmentList from '@/components/SegmentList.vue'
 import JsonOutput from '@/components/JsonOutput.vue'
 import PreviewCanvas from '@/components/PreviewCanvas.vue'
 import PlayerControls from '@/components/PlayerControls.vue'
 import VectorModal from '@/components/VectorModal.vue'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 import { useSegments } from '@/composables/useSegments'
 import { useAnimation } from '@/composables/useAnimation'
 import { segmentsToJsonString } from '@/utils/positionJson'
+import { saveState, loadState, clearState, hasSavedState } from '@/utils/storage'
 
-const { segments, addSegment, removeSegment, updateField, toggleLinked, maxEndTime, parseJson, mirrorHorizontal, mirrorVertical, mirrorDiagonal, rotate, translate, scale } = useSegments()
+const { segments, groups, activeGroupId, visibleSegments, addSegment, removeSegment, updateField, toggleLinked, maxEndTime, parseJson, mirrorHorizontal, mirrorVertical, mirrorDiagonal, rotate, translate, scale, createGroup, deleteGroup, updateGroup, addSegmentsToGroup, removeSegmentsFromGroup, toggleGroupExpand, setActiveGroup, loadSegmentsFromData, resetAll } = useSegments()
 const { currentTime, playing, togglePlay, reset, getPointAtTime } = useAnimation()
 
 const timeUnit = ref<'milliseconds' | 'seconds'>('seconds')
@@ -17,6 +19,18 @@ const isFullscreen = ref(false)
 const bpm = ref(120)
 const useBpmMode = ref(false)
 const showVectorModal = ref(false)
+const showExitModal = ref(false)
+
+const hasSavedStateCheck = computed(() => hasSavedState())
+
+onMounted(() => {
+  const savedState = loadState()
+  if (savedState) {
+    loadSegmentsFromData(savedState.segments, savedState.groups)
+    bpm.value = savedState.bpm
+    useBpmMode.value = savedState.useBpmMode
+  }
+})
 
 const jsonOutput = computed(() => {
   // 当切换BPM模式或BPM值变化时，强制重新计算JSON输出
@@ -73,11 +87,34 @@ function handleParseJson(json: any) {
 }
 
 function handleExit() {
+  showExitModal.value = true
+}
+
+function handleExitConfirm() {
+  saveState(segments.value, groups.value, bpm.value, useBpmMode.value)
   if (typeof window !== 'undefined' && (window as any).electron && (window as any).electron.app) {
     (window as any).electron.app.quit()
   } else {
     window.location.reload()
   }
+}
+
+function handleExitCancel() {
+  if (typeof window !== 'undefined' && (window as any).electron && (window as any).electron.app) {
+    (window as any).electron.app.quit()
+  } else {
+    window.location.reload()
+  }
+}
+
+function handleExitNeutral() {
+  showExitModal.value = false
+}
+
+function handleClearAndReload() {
+  clearState()
+  resetAll()
+  window.location.reload()
 }
 
 function toggleFullscreen() {
@@ -100,6 +137,30 @@ function toggleFullscreen() {
 
 function handleOpenVectorModal() {
   showVectorModal.value = true
+}
+
+function handleCreateGroup(name: string, segmentIds: number[]) {
+  createGroup(name, segmentIds)
+}
+
+function handleDeleteGroup(groupId: number) {
+  deleteGroup(groupId)
+}
+
+function handleUpdateGroup(groupId: number, updates: any) {
+  updateGroup(groupId, updates)
+}
+
+function handleAddSegmentsToGroup(groupId: number, segmentIds: number[]) {
+  addSegmentsToGroup(groupId, segmentIds)
+}
+
+function handleRemoveSegmentsFromGroup(groupId: number, segmentIds: number[]) {
+  removeSegmentsFromGroup(groupId, segmentIds)
+}
+
+function handleToggleGroupExpand(groupId: number) {
+  toggleGroupExpand(groupId)
 }
 
 function handleVectorExecute(operation: string, params: any) {
@@ -130,6 +191,7 @@ function handleVectorExecute(operation: string, params: any) {
   <header class="app-header">
     <h1>《汐梦之歌》Position工具</h1>
     <div class="header-buttons">
+      <button v-if="hasSavedStateCheck" @click="handleClearAndReload" class="clear-button">清空已保存</button>
       <button class="fullscreen-button" @click="toggleFullscreen">{{ isFullscreen ? '退出全屏' : '全屏' }}</button>
       <button class="exit-button" @click="handleExit">退出</button>
     </div>
@@ -148,6 +210,7 @@ function handleVectorExecute(operation: string, params: any) {
   </div>
   <SegmentList
     :segments="segments"
+    :groups="groups"
     :bpm="bpm"
     :use-bpm-mode="useBpmMode"
     :vector-ops="{ mirrorHorizontal, mirrorVertical, mirrorDiagonal, rotate, translate, scale }"
@@ -156,7 +219,20 @@ function handleVectorExecute(operation: string, params: any) {
     @update="updateField"
     @toggle-linked="toggleLinked"
     @open-vector-modal="handleOpenVectorModal"
+    @create-group="handleCreateGroup"
+    @delete-group="handleDeleteGroup"
+    @update-group="handleUpdateGroup"
+    @add-segments-to-group="handleAddSegmentsToGroup"
+    @remove-segments-from-group="handleRemoveSegmentsFromGroup"
+    @toggle-group-expand="handleToggleGroupExpand"
   />
+  <div class="group-preview-control" v-if="groups.length > 0">
+    <label>预览分组: </label>
+    <select v-model="activeGroupId" @change="setActiveGroup(activeGroupId)">
+      <option :value="null">全部</option>
+      <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
+    </select>
+  </div>
 </div>
     <div class="right-panel">
       <JsonOutput :json="jsonOutput" v-model:timeUnit="timeUnit" @parse-json="handleParseJson" />
@@ -171,7 +247,7 @@ function handleVectorExecute(operation: string, params: any) {
         @time-change="handleTimeChange"
       />
       <PreviewCanvas
-        :segments="segments"
+        :segments="visibleSegments"
         :current-time="currentTime"
         :max-time="maxEndTime"
         :get-point-at-time="getPointAtTime"
@@ -184,6 +260,17 @@ function handleVectorExecute(operation: string, params: any) {
   <VectorModal
     v-model:visible="showVectorModal"
     @execute="handleVectorExecute"
+  />
+  <ConfirmModal
+    v-model:visible="showExitModal"
+    title="保存配置"
+    message="是否保存当前配置？\n\n是 - 保存配置，下次启动时自动加载\n否 - 不保存，下次启动时为空\n取消 - 取消关闭"
+    confirm-text="是"
+    cancel-text="否"
+    neutral-text="取消"
+    @confirm="handleExitConfirm"
+    @cancel="handleExitCancel"
+    @neutral="handleExitNeutral"
   />
 </template>
 
@@ -209,6 +296,21 @@ function handleVectorExecute(operation: string, params: any) {
     display: flex;
     align-items: center;
     gap: 10px;
+  }
+
+  .clear-button {
+    background: $accent;
+    color: white;
+    border: 1px solid $accent;
+    padding: $spacing-sm $spacing-xl;
+    border-radius: $border-radius;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: $font-size-base;
+
+    &:hover {
+      background: $accent-hover;
+    }
   }
 
   .exit-button {
@@ -280,6 +382,26 @@ function handleVectorExecute(operation: string, params: any) {
     input[type="number"] {
       @include input-base;
       width: 80px;
+    }
+  }
+
+  .group-preview-control {
+    padding: 12px 16px;
+    background: $bg-secondary;
+    border-bottom: 1px solid $border;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    label {
+      color: $text-secondary;
+      font-weight: bold;
+      font-size: $font-size-sm;
+    }
+
+    select {
+      @include input-base;
+      min-width: 150px;
     }
   }
 }

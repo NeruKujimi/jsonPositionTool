@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import type { Segment } from '@/types'
 import { getAllEaseNames } from '@/registry/easing'
 import EasePreview from './EasePreview.vue'
@@ -11,6 +11,8 @@ const props = defineProps<{
   isFirst: boolean
   bpm: number
   useBpmMode: boolean
+  selectable?: boolean
+  selected?: boolean
   vectorOps?: {
     mirrorHorizontal: (ids?: number[]) => void
     mirrorVertical: (ids?: number[]) => void
@@ -25,6 +27,7 @@ const emit = defineEmits<{
   remove: [id: number]
   update: [id: number, field: keyof Segment, value: number | string | boolean]
   'toggle-linked': [id: number, linked: boolean]
+  'toggle-select': [id: number]
 }>()
 
 const easeOptions = getAllEaseNames()
@@ -33,16 +36,6 @@ const showCoordinatePicker = ref(false)
 const currentPickerMode = ref<'single' | 'double' | 'edit'>('single')
 const currentPickerTarget = ref<'start' | 'end' | null>(null)
 const tempCoordinate = ref({ x: 0, y: 0 })
-const useBeats = ref(false)
-const startBeat = ref(0)
-const endBeat = ref(0)
-
-const linkNote = computed(() =>
-  props.segment.linked && !props.isFirst
-    ? '勾选链接后，当前事件的开始时间和起点会自动继承上个事件的结束时间与终点'
-    : ''
-)
-
 const msPerBeat = computed(() => 60000 / props.bpm)
 
 function beatsToMs(beats: number): number {
@@ -53,15 +46,24 @@ function msToBeats(ms: number): number {
   return ms / msPerBeat.value
 }
 
+const useBeats = ref(props.useBpmMode)
+const startBeat = ref(props.useBpmMode ? msToBeats(props.segment.startTime) : 0)
+const endBeat = ref(props.useBpmMode ? msToBeats(props.segment.endTime) : 0)
+
+const linkNote = computed(() =>
+  props.segment.linked && !props.isFirst
+    ? '勾选链接后，当前事件的开始时间和起点会自动继承上个事件的结束时间与终点'
+    : ''
+)
+
 function round(value: number): number {
   return Math.round(value)
 }
 
+let isUpdatingFromBeat = false
+
 watch(() => props.useBpmMode, (newVal) => {
   useBeats.value = newVal
-})
-
-watch(useBeats, (newVal) => {
   if (newVal) {
     startBeat.value = msToBeats(props.segment.startTime)
     endBeat.value = msToBeats(props.segment.endTime)
@@ -69,14 +71,30 @@ watch(useBeats, (newVal) => {
 })
 
 watch(startBeat, (newVal) => {
-  if (useBeats.value) {
+  if (useBeats.value && !isUpdatingFromBeat) {
+    isUpdatingFromBeat = true
     emit('update', props.segment.id, 'startTime', beatsToMs(newVal))
+    nextTick(() => { isUpdatingFromBeat = false })
   }
 })
 
 watch(endBeat, (newVal) => {
-  if (useBeats.value) {
+  if (useBeats.value && !isUpdatingFromBeat) {
+    isUpdatingFromBeat = true
     emit('update', props.segment.id, 'endTime', beatsToMs(newVal))
+    nextTick(() => { isUpdatingFromBeat = false })
+  }
+})
+
+watch(() => props.segment.startTime, (newVal) => {
+  if (useBeats.value && !isUpdatingFromBeat) {
+    startBeat.value = msToBeats(newVal)
+  }
+})
+
+watch(() => props.segment.endTime, (newVal) => {
+  if (useBeats.value && !isUpdatingFromBeat) {
+    endBeat.value = msToBeats(newVal)
   }
 })
 
@@ -204,8 +222,9 @@ function handleScale() {
 </script>
 
 <template>
-  <div class="segment">
+  <div class="segment" :class="{ 'segment-selected': selected }">
     <div class="seg-header">
+      <input v-if="selectable" type="checkbox" :checked="selected" @change="emit('toggle-select', segment.id)" class="select-checkbox" />
       <span class="seg-index">事件 {{ index + 1 }}</span>
       <button class="btn-remove" @click="emit('remove', segment.id)">删除</button>
     </div>
@@ -335,6 +354,12 @@ function handleScale() {
   border-radius: 8px;
   padding: $section-padding;
   margin-bottom: $spacing-lg;
+  transition: all 0.2s ease;
+}
+
+.segment-selected {
+  border-color: $accent;
+  box-shadow: 0 0 0 2px rgba($accent, 0.3);
 }
 
 .seg-header {
@@ -344,8 +369,17 @@ function handleScale() {
   margin-bottom: $spacing-md;
   padding-bottom: $spacing-sm;
   border-bottom: 1px solid $border;
+  gap: $spacing-md;
+
+  .select-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: $accent;
+  }
 
   .seg-index {
+    flex: 1;
     font-weight: bold;
     color: $accent;
   }

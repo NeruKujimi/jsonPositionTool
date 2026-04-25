@@ -13,6 +13,14 @@ export interface Segment {
   endY: number
   easeType: string
   linked: boolean
+  groupId?: number
+}
+
+export interface SegmentGroup {
+  id: number
+  name: string
+  expanded: boolean
+  segmentIds: number[]
 }
 
 export type EaseFunction = (t: number) => number
@@ -32,4 +40,12 @@ export interface PositionJsonItem {
   endPos: Point
   easeType: string
   posType: 'Straight'
+  groupId?: number
+}
+
+export interface PositionJsonGroup {
+  id: number
+  name: string
+  expanded: boolean
+  segmentIds: number[]
 }
