@@ -11,7 +11,7 @@ import { useAnimation } from '@/composables/useAnimation'
 import { segmentsToJsonString } from '@/utils/positionJson'
 import { saveState, loadState, clearState, hasSavedState } from '@/utils/storage'
 
-const { segments, groups, activeGroupId, visibleSegments, addSegment, removeSegment, updateField, toggleLinked, maxEndTime, parseJson, mirrorHorizontal, mirrorVertical, mirrorDiagonal, rotate, translate, scale, createGroup, deleteGroup, updateGroup, addSegmentsToGroup, removeSegmentsFromGroup, toggleGroupExpand, setActiveGroup, loadSegmentsFromData, resetAll } = useSegments()
+const { segments, groups, visibleSegments, addSegment, removeSegment, updateField, toggleLinked, maxEndTime, parseJson, mirrorHorizontal, mirrorVertical, mirrorDiagonal, rotate, translate, scale, createGroup, deleteGroup, updateGroup, addSegmentsToGroup, removeSegmentsFromGroup, toggleGroupExpand, loadSegmentsFromData, resetAll, setSelectedGroups, removeAllGroups } = useSegments()
 const { currentTime, playing, togglePlay, reset, getPointAtTime } = useAnimation()
 
 const timeUnit = ref<'milliseconds' | 'seconds'>('seconds')
@@ -20,8 +20,55 @@ const bpm = ref(120)
 const useBpmMode = ref(false)
 const showVectorModal = ref(false)
 const showExitModal = ref(false)
+const selectedPreviewGroups = ref<number[]>([])
 
 const hasSavedStateCheck = computed(() => hasSavedState())
+
+function isGroupSelected(groupId: number): boolean {
+  return selectedPreviewGroups.value.includes(groupId)
+}
+
+function toggleGroupSelection(groupId: number) {
+  const currentlySelected = selectedPreviewGroups.value
+  if (currentlySelected.includes(groupId)) {
+    const minId = currentlySelected.reduce((min, id) => Math.min(min, id), Infinity)
+    const maxId = currentlySelected.reduce((max, id) => Math.max(max, id), -Infinity)
+    
+    if (groupId === minId || groupId === maxId) {
+      selectedPreviewGroups.value = currentlySelected.filter(id => id !== groupId)
+    } else {
+      const newSelection: number[] = []
+      for (let i = Math.min(groupId, minId); i <= Math.max(groupId, maxId); i++) {
+        if (currentlySelected.includes(i)) {
+          newSelection.push(i)
+        }
+      }
+      selectedPreviewGroups.value = newSelection
+    }
+  } else {
+    if (currentlySelected.length === 0) {
+      selectedPreviewGroups.value = [groupId]
+    } else {
+      const minId = Math.min(...currentlySelected)
+      const maxId = Math.max(...currentlySelected)
+      const newSelection: number[] = []
+      for (let i = Math.min(groupId, minId); i <= Math.max(groupId, maxId); i++) {
+        newSelection.push(i)
+      }
+      selectedPreviewGroups.value = newSelection
+    }
+  }
+  updateVisibleSegmentsForGroups()
+}
+
+function clearGroupSelection() {
+  selectedPreviewGroups.value = []
+  setSelectedGroups([])
+}
+
+function updateVisibleSegmentsForGroups() {
+  setSelectedGroups(selectedPreviewGroups.value)
+}
 
 onMounted(() => {
   const savedState = loadState()
@@ -163,6 +210,12 @@ function handleToggleGroupExpand(groupId: number) {
   toggleGroupExpand(groupId)
 }
 
+function handleRemoveAllGroups() {
+  removeAllGroups()
+  selectedPreviewGroups.value = []
+  setSelectedGroups([])
+}
+
 function handleVectorExecute(operation: string, params: any) {
   switch (operation) {
     case 'mirrorHorizontal':
@@ -225,13 +278,26 @@ function handleVectorExecute(operation: string, params: any) {
     @add-segments-to-group="handleAddSegmentsToGroup"
     @remove-segments-from-group="handleRemoveSegmentsFromGroup"
     @toggle-group-expand="handleToggleGroupExpand"
+    @remove-all-groups="handleRemoveAllGroups"
   />
   <div class="group-preview-control" v-if="groups.length > 0">
-    <label>预览分组: </label>
-    <select v-model="activeGroupId" @change="setActiveGroup(activeGroupId)">
-      <option :value="null">全部</option>
-      <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
-    </select>
+    <span class="preview-label">预览分组: </span>
+    <div class="group-checkboxes">
+      <label
+        v-for="group in groups"
+        :key="group.id"
+        class="group-checkbox-item"
+        :class="{ selected: isGroupSelected(group.id) }"
+      >
+        <input
+          type="checkbox"
+          :checked="isGroupSelected(group.id)"
+          @change="toggleGroupSelection(group.id)"
+        />
+        {{ group.name }}
+      </label>
+    </div>
+    <button v-if="selectedPreviewGroups.length > 0" @click="clearGroupSelection" class="clear-preview-btn">清除选择</button>
   </div>
 </div>
     <div class="right-panel">
@@ -392,16 +458,63 @@ function handleVectorExecute(operation: string, params: any) {
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
 
-    label {
+    .preview-label {
       color: $text-secondary;
       font-weight: bold;
       font-size: $font-size-sm;
     }
 
-    select {
-      @include input-base;
-      min-width: 150px;
+    .group-checkboxes {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .group-checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      background: $bg-tertiary;
+      border: 1px solid $border;
+      border-radius: $border-radius;
+      cursor: pointer;
+      font-size: $font-size-sm;
+      color: $text-secondary;
+      transition: all 0.2s;
+
+      &:hover {
+        border-color: $accent;
+      }
+
+      &.selected {
+        background: rgba($accent, 0.15);
+        border-color: $accent;
+        color: $accent;
+      }
+
+      input[type="checkbox"] {
+        cursor: pointer;
+      }
+    }
+
+    .clear-preview-btn {
+      @include button-base;
+      padding: 4px 12px;
+      font-size: $font-size-sm;
+      background: $bg-tertiary;
+      color: $text-secondary;
+      border: 1px solid $border;
+      border-radius: $border-radius;
+      cursor: pointer;
+
+      &:hover {
+        background: $bg-primary;
+        color: $accent;
+        border-color: $accent;
+      }
     }
   }
 }

@@ -30,6 +30,7 @@ const emit = defineEmits<{
   'add-segments-to-group': [groupId: number, segmentIds: number[]]
   'remove-segments-from-group': [groupId: number, segmentIds: number[]]
   'toggle-group-expand': [groupId: number]
+  'remove-all-groups': []
 }>()
 
 const selectedSegmentIds = ref<number[]>([])
@@ -135,6 +136,7 @@ function getSegmentIndex(seg: Segment) {
       <div class="section-buttons">
         <button @click="emit('add')">+ 添加</button>
         <button @click="startCreateGroup" v-if="segments.length >= 2 && !creatingGroup">+ 创建分组</button>
+        <button @click="emit('remove-all-groups')" v-if="groups.length > 0" class="remove-all-groups-btn">解除全部分组</button>
         <button @click="emit('open-vector-modal')" class="vector-modal-btn">统一事件操作</button>
       </div>
     </div>
@@ -252,6 +254,16 @@ function getSegmentIndex(seg: Segment) {
     background: $bg-tertiary;
     color: $accent;
     border: 1px solid $accent;
+  }
+
+  .remove-all-groups-btn {
+    background: $danger;
+    color: white;
+    border: 1px solid $danger;
+
+    &:hover {
+      background: $danger-hover;
+    }
   }
 }
 

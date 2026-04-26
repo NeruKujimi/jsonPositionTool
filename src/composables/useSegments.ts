@@ -8,6 +8,7 @@ export function useSegments() {
   const segments = ref<Segment[]>([])
   const groups = ref<SegmentGroup[]>([])
   const activeGroupId = ref<number | null>(null)
+  const selectedGroupIds = ref<number[]>([])
 
   function addSegment(opts?: Partial<Segment>) {
     const prev = segments.value.length > 0 ? segments.value[segments.value.length - 1] : null
@@ -189,12 +190,33 @@ export function useSegments() {
     groupIdCounter = 0
   }
 
+  function removeAllGroups() {
+    segments.value.forEach(seg => {
+      seg.groupId = undefined
+    })
+    groups.value = []
+  }
+
   const visibleSegments = computed(() => {
+    if (selectedGroupIds.value.length > 0) {
+      const allSegmentIds: number[] = []
+      selectedGroupIds.value.forEach(groupId => {
+        const group = groups.value.find(g => g.id === groupId)
+        if (group) {
+          allSegmentIds.push(...group.segmentIds)
+        }
+      })
+      return segments.value.filter(s => allSegmentIds.includes(s.id))
+    }
     if (activeGroupId.value !== null) {
       return getGroupSegments(activeGroupId.value)
     }
     return segments.value
   })
+  
+  function setSelectedGroups(groupIds: number[]) {
+    selectedGroupIds.value = groupIds
+  }
 
   const maxEndTime = computed(() => {
     if (visibleSegments.value.length === 0) return 0
@@ -523,7 +545,9 @@ export function useSegments() {
     segments,
     groups,
     activeGroupId,
+    selectedGroupIds,
     visibleSegments,
+    setSelectedGroups,
     addSegment,
     removeSegment,
     updateField,
@@ -546,5 +570,6 @@ export function useSegments() {
     getGroupSegments,
     loadSegmentsFromData,
     resetAll,
+    removeAllGroups,
   }
 }
