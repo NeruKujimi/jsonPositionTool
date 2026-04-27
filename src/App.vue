@@ -1,221 +1,237 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+/**
+ * ========================================
+ * App.vue - 应用主组件
+ * ========================================
+ * 
+ * 【组件说明】
+ * 应用的主入口组件，负责整合所有子组件和功能模块
+ * 
+ * 【模块划分】
+ * - AppHeader: 头部区域（标题、操作按钮）
+ * - BpmControl: BPM控制
+ * - SegmentList: 事件列表管理
+ * - GroupPreviewSelector: 分组预览选择
+ * - JsonOutput: JSON输入输出
+ * - PlayerControls: 播放控制
+ * - PreviewCanvas: 预览画布
+ * - VectorModal: 批量向量操作弹窗
+ * - ConfirmModal: 确认对话框
+ * 
+ * 【状态管理】
+ * 使用组合式函数分散管理状态：
+ * - useSegments: 事件和分组数据
+ * - useAnimation: 播放时间线
+ * - useApp: 应用级状态（BPM、全屏等）
+ * - usePreviewGroups: 分组预览选择
+ * - useExitHandler: 退出处理
+ * 
+ * 【数据流】
+ * 1. 启动时从 localStorage 加载保存的配置
+ * 2. 用户操作通过事件传递给对应的组合式函数
+ * 3. 状态变化通过组合式函数同步到各个组件
+ * 4. 退出时可选择保存当前配置到 localStorage
+ */
+
+import { ref, computed, onMounted } from 'vue'
+
+// 导入子组件
+import AppHeader from '@/components/AppHeader.vue'
+import BpmControl from '@/components/BpmControl.vue'
 import SegmentList from '@/components/SegmentList.vue'
+import GroupPreviewSelector from '@/components/GroupPreviewSelector.vue'
 import JsonOutput from '@/components/JsonOutput.vue'
-import PreviewCanvas from '@/components/PreviewCanvas.vue'
 import PlayerControls from '@/components/PlayerControls.vue'
+import PreviewCanvas from '@/components/PreviewCanvas.vue'
 import VectorModal from '@/components/VectorModal.vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
+
+// 导入组合式函数
 import { useSegments } from '@/composables/useSegments'
 import { useAnimation } from '@/composables/useAnimation'
+import { useApp } from '@/composables/useApp'
+import { usePreviewGroups } from '@/composables/usePreviewGroups'
+import { useExitHandler } from '@/composables/useExitHandler'
+
+// 导入工具函数
 import { segmentsToJsonString } from '@/utils/positionJson'
 import { saveState, loadState, clearState, hasSavedState } from '@/utils/storage'
 
-const { segments, groups, visibleSegments, addSegment, removeSegment, updateField, toggleLinked, maxEndTime, parseJson, mirrorHorizontal, mirrorVertical, mirrorDiagonal, rotate, translate, scale, createGroup, deleteGroup, updateGroup, addSegmentsToGroup, removeSegmentsFromGroup, toggleGroupExpand, loadSegmentsFromData, resetAll, setSelectedGroups, removeAllGroups } = useSegments()
+// =============================================
+// 组合式函数初始化
+// =============================================
+
+// 事件和分组数据管理
+const {
+  segments,
+  groups,
+  visibleSegments,
+  addSegment,
+  removeSegment,
+  updateField,
+  toggleLinked,
+  maxEndTime,
+  parseJson,
+  mirrorHorizontal,
+  mirrorVertical,
+  mirrorDiagonal,
+  rotate,
+  translate,
+  scale,
+  createGroup,
+  deleteGroup,
+  updateGroup,
+  addSegmentsToGroup,
+  removeSegmentsFromGroup,
+  toggleGroupExpand,
+  loadSegmentsFromData,
+  resetAll,
+  setSelectedGroups,
+  removeAllGroups,
+} = useSegments()
+
+// 播放动画控制
 const { currentTime, playing, togglePlay, reset, getPointAtTime } = useAnimation()
 
-const timeUnit = ref<'milliseconds' | 'seconds'>('seconds')
-const isFullscreen = ref(false)
-const bpm = ref(120)
-const useBpmMode = ref(false)
-const showVectorModal = ref(false)
-const showExitModal = ref(false)
-const selectedPreviewGroups = ref<number[]>([])
+// 应用级状态
+const { bpm, useBpmMode, timeUnit, toggleFullscreen } = useApp()
 
+// 分组预览选择
+const { selectedGroupIds, isGroupSelected, toggleGroupSelection, clearSelection } = usePreviewGroups()
+
+// 退出处理
+const { showExitModal, handleExit, handleExitConfirm, handleExitCancel, handleExitNeutral, handleClearAndReload } = useExitHandler({
+  onSave: () => saveState(segments.value, groups.value, bpm.value, useBpmMode.value),
+  onQuit: () => {
+    if (typeof window !== 'undefined' && (window as any).electron && (window as any).electron.app) {
+      (window as any).electron.app.quit()
+    } else {
+      window.location.reload()
+    }
+  },
+  onReset: () => {
+    clearState()
+    resetAll()
+  },
+})
+
+// =============================================
+// 本地状态
+// =============================================
+
+/** 是否存在已保存的状态 */
 const hasSavedStateCheck = computed(() => hasSavedState())
 
-function isGroupSelected(groupId: number): boolean {
-  return selectedPreviewGroups.value.includes(groupId)
-}
+/** 向量操作弹窗显示状态 */
+const showVectorModal = ref(false)
 
-function toggleGroupSelection(groupId: number) {
-  const currentlySelected = selectedPreviewGroups.value
-  if (currentlySelected.includes(groupId)) {
-    const minId = currentlySelected.reduce((min, id) => Math.min(min, id), Infinity)
-    const maxId = currentlySelected.reduce((max, id) => Math.max(max, id), -Infinity)
-    
-    if (groupId === minId || groupId === maxId) {
-      selectedPreviewGroups.value = currentlySelected.filter(id => id !== groupId)
-    } else {
-      const newSelection: number[] = []
-      for (let i = Math.min(groupId, minId); i <= Math.max(groupId, maxId); i++) {
-        if (currentlySelected.includes(i)) {
-          newSelection.push(i)
-        }
-      }
-      selectedPreviewGroups.value = newSelection
-    }
-  } else {
-    if (currentlySelected.length === 0) {
-      selectedPreviewGroups.value = [groupId]
-    } else {
-      const minId = Math.min(...currentlySelected)
-      const maxId = Math.max(...currentlySelected)
-      const newSelection: number[] = []
-      for (let i = Math.min(groupId, minId); i <= Math.max(groupId, maxId); i++) {
-        newSelection.push(i)
-      }
-      selectedPreviewGroups.value = newSelection
-    }
-  }
-  updateVisibleSegmentsForGroups()
-}
+// =============================================
+// 计算属性
+// =============================================
 
-function clearGroupSelection() {
-  selectedPreviewGroups.value = []
-  setSelectedGroups([])
-}
+/**
+ * JSON输出
+ * @description 根据当前事件和时间单位生成JSON字符串
+ */
+const jsonOutput = computed(() => {
+  // 依赖 useBpmMode 和 bpm 确保变化时重新计算
+  useBpmMode.value
+  bpm.value
+  return segmentsToJsonString(segments.value, timeUnit.value)
+})
 
-function updateVisibleSegmentsForGroups() {
-  setSelectedGroups(selectedPreviewGroups.value)
-}
+// =============================================
+// 生命周期钩子
+// =============================================
 
+/**
+ * 组件挂载时加载保存的状态
+ */
 onMounted(() => {
   const savedState = loadState()
   if (savedState) {
+    // 加载事件和分组数据
     loadSegmentsFromData(savedState.segments, savedState.groups)
+    // 恢复BPM设置
     bpm.value = savedState.bpm
     useBpmMode.value = savedState.useBpmMode
   }
 })
 
-const jsonOutput = computed(() => {
-  // 当切换BPM模式或BPM值变化时，强制重新计算JSON输出
-  useBpmMode.value // 确保依赖于useBpmMode
-  bpm.value // 确保依赖于bpm
-  return segmentsToJsonString(segments.value, timeUnit.value)
-})
+// =============================================
+// 事件处理函数
+// =============================================
 
-// 监听BPM变化，保持拍数不变但更新实际时间
-let currentBeat = 0
-watch(bpm, (newBpm, oldBpm) => {
-  if (useBpmMode.value && oldBpm && newBpm) {
-    // 计算当前拍数
-    const oldMsPerBeat = 60000 / oldBpm
-    currentBeat = currentTime.value / oldMsPerBeat
-    
-    // 使用新的BPM值计算新的毫秒时间
-    const newMsPerBeat = 60000 / newBpm
-    currentTime.value = currentBeat * newMsPerBeat
-  }
-})
-
-// 监听useBpmMode变化，保持时间一致性
-watch(useBpmMode, (newMode) => {
-  if (newMode) {
-    // 切换到BPM模式，记录当前拍数
-    const msPerBeat = 60000 / bpm.value
-    currentBeat = currentTime.value / msPerBeat
-  } else {
-    // 切换到非BPM模式，保持毫秒时间不变
-  }
-})
-
+/** 添加新事件 */
 function handleAddSegment() {
   addSegment()
 }
 
+/** 切换播放状态 */
 function handleTogglePlay() {
   togglePlay(segments.value, maxEndTime.value)
 }
 
+/** 重置播放 */
 function handleReset() {
   reset()
 }
 
+/** 更新时间 */
 function handleTimeChange(val: number) {
   currentTime.value = val
 }
 
+/** 解析JSON */
 function handleParseJson(json: any) {
   if (Array.isArray(json)) {
     parseJson(json, timeUnit.value)
   }
 }
 
-function handleExit() {
-  showExitModal.value = true
-}
-
-function handleExitConfirm() {
-  saveState(segments.value, groups.value, bpm.value, useBpmMode.value)
-  if (typeof window !== 'undefined' && (window as any).electron && (window as any).electron.app) {
-    (window as any).electron.app.quit()
-  } else {
-    window.location.reload()
-  }
-}
-
-function handleExitCancel() {
-  if (typeof window !== 'undefined' && (window as any).electron && (window as any).electron.app) {
-    (window as any).electron.app.quit()
-  } else {
-    window.location.reload()
-  }
-}
-
-function handleExitNeutral() {
-  showExitModal.value = false
-}
-
-function handleClearAndReload() {
-  clearState()
-  resetAll()
-  window.location.reload()
-}
-
-function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().then(() => {
-      isFullscreen.value = true
-    }).catch((err) => {
-      console.error('Fullscreen error:', err)
-    })
-  } else {
-    if (document.exitFullscreen) {
-      document.exitFullscreen().then(() => {
-        isFullscreen.value = false
-      }).catch((err) => {
-        console.error('Exit fullscreen error:', err)
-      })
-    }
-  }
-}
-
+/** 打开向量操作弹窗 */
 function handleOpenVectorModal() {
   showVectorModal.value = true
 }
 
+/** 创建分组 */
 function handleCreateGroup(name: string, segmentIds: number[]) {
   createGroup(name, segmentIds)
 }
 
+/** 删除分组 */
 function handleDeleteGroup(groupId: number) {
   deleteGroup(groupId)
 }
 
+/** 更新分组 */
 function handleUpdateGroup(groupId: number, updates: any) {
   updateGroup(groupId, updates)
 }
 
+/** 添加事件到分组 */
 function handleAddSegmentsToGroup(groupId: number, segmentIds: number[]) {
   addSegmentsToGroup(groupId, segmentIds)
 }
 
+/** 从分组移除事件 */
 function handleRemoveSegmentsFromGroup(groupId: number, segmentIds: number[]) {
   removeSegmentsFromGroup(groupId, segmentIds)
 }
 
+/** 切换分组展开/折叠 */
 function handleToggleGroupExpand(groupId: number) {
   toggleGroupExpand(groupId)
 }
 
+/** 移除所有分组 */
 function handleRemoveAllGroups() {
   removeAllGroups()
-  selectedPreviewGroups.value = []
+  clearSelection()
   setSelectedGroups([])
 }
 
+/** 执行向量操作 */
 function handleVectorExecute(operation: string, params: any) {
   switch (operation) {
     case 'mirrorHorizontal':
@@ -238,70 +254,81 @@ function handleVectorExecute(operation: string, params: any) {
       break
   }
 }
+
+/** 切换分组预览选择 */
+function handleToggleGroupPreview(groupId: number) {
+  toggleGroupSelection(groupId)
+  setSelectedGroups(selectedGroupIds.value)
+}
+
+/** 清空分组预览选择 */
+function handleClearGroupPreview() {
+  clearSelection()
+  setSelectedGroups([])
+}
 </script>
 
 <template>
-  <header class="app-header">
-    <h1>《汐梦之歌》Position工具</h1>
-    <div class="header-buttons">
-      <button v-if="hasSavedStateCheck" @click="handleClearAndReload" class="clear-button">清空已保存</button>
-      <button class="fullscreen-button" @click="toggleFullscreen">{{ isFullscreen ? '退出全屏' : '全屏' }}</button>
-      <button class="exit-button" @click="handleExit">退出</button>
-    </div>
-  </header>
-  <main class="app-main">
-    <div class="left-panel">
-  <div class="bpm-control">
-    <label class="bpm-toggle">
-      <input type="checkbox" v-model="useBpmMode" />
-      BPM模式
-    </label>
-    <template v-if="useBpmMode">
-      <label>BPM: </label>
-      <input type="number" v-model.number="bpm" min="1" max="300" />
-    </template>
-  </div>
-  <SegmentList
-    :segments="segments"
-    :groups="groups"
-    :bpm="bpm"
-    :use-bpm-mode="useBpmMode"
-    :vector-ops="{ mirrorHorizontal, mirrorVertical, mirrorDiagonal, rotate, translate, scale }"
-    @add="handleAddSegment"
-    @remove="(id: number) => removeSegment(id)"
-    @update="updateField"
-    @toggle-linked="toggleLinked"
-    @open-vector-modal="handleOpenVectorModal"
-    @create-group="handleCreateGroup"
-    @delete-group="handleDeleteGroup"
-    @update-group="handleUpdateGroup"
-    @add-segments-to-group="handleAddSegmentsToGroup"
-    @remove-segments-from-group="handleRemoveSegmentsFromGroup"
-    @toggle-group-expand="handleToggleGroupExpand"
-    @remove-all-groups="handleRemoveAllGroups"
+  <!-- 应用头部 -->
+  <AppHeader
+    :has-saved-state="hasSavedStateCheck"
+    :is-fullscreen="false"
+    @clear="handleClearAndReload"
+    @fullscreen="toggleFullscreen"
+    @exit="handleExit"
   />
-  <div class="group-preview-control" v-if="groups.length > 0">
-    <span class="preview-label">预览分组: </span>
-    <div class="group-checkboxes">
-      <label
-        v-for="group in groups"
-        :key="group.id"
-        class="group-checkbox-item"
-        :class="{ selected: isGroupSelected(group.id) }"
-      >
-        <input
-          type="checkbox"
-          :checked="isGroupSelected(group.id)"
-          @change="toggleGroupSelection(group.id)"
-        />
-        {{ group.name }}
-      </label>
+
+  <!-- 主内容区域 -->
+  <main class="app-main">
+    <!-- 左侧面板 -->
+    <div class="left-panel">
+      <!-- BPM控制 -->
+      <BpmControl
+        v-model:use-bpm-mode="useBpmMode"
+        v-model:bpm="bpm"
+      />
+
+      <!-- 事件列表 -->
+      <SegmentList
+        :segments="segments"
+        :groups="groups"
+        :bpm="bpm"
+        :use-bpm-mode="useBpmMode"
+        :vector-ops="{ mirrorHorizontal, mirrorVertical, mirrorDiagonal, rotate, translate, scale }"
+        @add="handleAddSegment"
+        @remove="(id: number) => removeSegment(id)"
+        @update="updateField"
+        @toggle-linked="toggleLinked"
+        @open-vector-modal="handleOpenVectorModal"
+        @create-group="handleCreateGroup"
+        @delete-group="handleDeleteGroup"
+        @update-group="handleUpdateGroup"
+        @add-segments-to-group="handleAddSegmentsToGroup"
+        @remove-segments-from-group="handleRemoveSegmentsFromGroup"
+        @toggle-group-expand="handleToggleGroupExpand"
+        @remove-all-groups="handleRemoveAllGroups"
+      />
+
+      <!-- 分组预览选择 -->
+      <GroupPreviewSelector
+        :groups="groups"
+        :selected-group-ids="selectedGroupIds"
+        :is-group-selected="isGroupSelected"
+        @toggle="handleToggleGroupPreview"
+        @clear="handleClearGroupPreview"
+      />
     </div>
-    <button v-if="selectedPreviewGroups.length > 0" @click="clearGroupSelection" class="clear-preview-btn">清除选择</button>
-  </div>
-</div>
+
+    <!-- 右侧面板 -->
     <div class="right-panel">
-      <JsonOutput :json="jsonOutput" v-model:timeUnit="timeUnit" @parse-json="handleParseJson" />
+      <!-- JSON输入输出 -->
+      <JsonOutput 
+        :json="jsonOutput" 
+        v-model:timeUnit="timeUnit" 
+        @parse-json="handleParseJson" 
+      />
+
+      <!-- 播放控制 -->
       <PlayerControls
         :current-time="currentTime"
         :max-time="maxEndTime"
@@ -312,6 +339,8 @@ function handleVectorExecute(operation: string, params: any) {
         @reset="handleReset"
         @time-change="handleTimeChange"
       />
+
+      <!-- 预览画布 -->
       <PreviewCanvas
         :segments="visibleSegments"
         :current-time="currentTime"
@@ -323,10 +352,14 @@ function handleVectorExecute(operation: string, params: any) {
       />
     </div>
   </main>
+
+  <!-- 向量操作弹窗 -->
   <VectorModal
     v-model:visible="showVectorModal"
     @execute="handleVectorExecute"
   />
+
+  <!-- 退出确认弹窗 -->
   <ConfirmModal
     v-model:visible="showExitModal"
     title="保存配置"
@@ -344,181 +377,23 @@ function handleVectorExecute(operation: string, params: any) {
 @use '@/styles/variables' as *;
 @use '@/styles/mixins' as *;
 
-.app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 20px;
-  background: $bg-secondary;
-  border-bottom: 2px solid $border;
-
-  h1 {
-    color: $accent;
-    font-size: $font-size-lg;
-    margin: 0;
-  }
-
-  .header-buttons {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .clear-button {
-    background: $accent;
-    color: white;
-    border: 1px solid $accent;
-    padding: $spacing-sm $spacing-xl;
-    border-radius: $border-radius;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: $font-size-base;
-
-    &:hover {
-      background: $accent-hover;
-    }
-  }
-
-  .exit-button {
-    background: $danger;
-    color: white;
-    border: 1px solid $danger;
-    padding: $spacing-sm $spacing-xl;
-    border-radius: $border-radius;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: $font-size-base;
-
-    &:hover {
-      background: $danger-hover;
-    }
-  }
-
-  .fullscreen-button {
-    background: transparent;
-    color: $danger;
-    border: 1px solid $danger;
-    padding: $spacing-sm $spacing-xl;
-    border-radius: $border-radius;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: $font-size-base;
-
-    &:hover {
-      background: $danger;
-      color: white;
-    }
-  }
-}
-
+// 主内容区域
 .app-main {
   display: flex;
   flex: 1;
   overflow: hidden;
 }
 
+// 左侧面板
 .left-panel {
   width: 45%;
   display: flex;
   flex-direction: column;
   border-right: 2px solid $border;
   overflow: hidden;
-
-  .bpm-control {
-    padding: 16px;
-    background: $bg-secondary;
-    border-bottom: 1px solid $border;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-
-    label {
-      color: $text-secondary;
-      font-weight: bold;
-    }
-
-    .bpm-toggle {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: $text-secondary;
-      font-weight: bold;
-    }
-
-    input[type="number"] {
-      @include input-base;
-      width: 80px;
-    }
-  }
-
-  .group-preview-control {
-    padding: 12px 16px;
-    background: $bg-secondary;
-    border-bottom: 1px solid $border;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-
-    .preview-label {
-      color: $text-secondary;
-      font-weight: bold;
-      font-size: $font-size-sm;
-    }
-
-    .group-checkboxes {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .group-checkbox-item {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      background: $bg-tertiary;
-      border: 1px solid $border;
-      border-radius: $border-radius;
-      cursor: pointer;
-      font-size: $font-size-sm;
-      color: $text-secondary;
-      transition: all 0.2s;
-
-      &:hover {
-        border-color: $accent;
-      }
-
-      &.selected {
-        background: rgba($accent, 0.15);
-        border-color: $accent;
-        color: $accent;
-      }
-
-      input[type="checkbox"] {
-        cursor: pointer;
-      }
-    }
-
-    .clear-preview-btn {
-      @include button-base;
-      padding: 4px 12px;
-      font-size: $font-size-sm;
-      background: $bg-tertiary;
-      color: $text-secondary;
-      border: 1px solid $border;
-      border-radius: $border-radius;
-      cursor: pointer;
-
-      &:hover {
-        background: $bg-primary;
-        color: $accent;
-        border-color: $accent;
-      }
-    }
-  }
 }
 
+// 右侧面板
 .right-panel {
   width: 55%;
   display: flex;
