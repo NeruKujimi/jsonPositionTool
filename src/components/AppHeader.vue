@@ -73,7 +73,7 @@ function handleExit() {
   <!-- 应用头部 -->
   <header class="app-header">
     <!-- 应用标题 -->
-    <h1>《汐梦之歌》Position工具</h1>
+    <h1>Position工具</h1>
     
     <!-- 操作按钮区域 -->
     <div class="header-buttons">
