@@ -363,7 +363,11 @@ function handleClearGroupPreview() {
   <ConfirmModal
     v-model:visible="showExitModal"
     title="保存配置"
-    message="是否保存当前配置？\n\n是 - 保存配置，下次启动时自动加载\n否 - 不保存，下次启动时为空\n取消 - 取消关闭"
+    message="是否保存当前配置？
+
+是 - 保存配置，下次启动时自动加载
+否 - 不保存，下次启动时为空
+取消 - 取消关闭"
     confirm-text="是"
     cancel-text="否"
     neutral-text="取消"
