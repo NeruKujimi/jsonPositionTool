@@ -52,6 +52,22 @@ function roundBeatToPrecision(beats: number): number {
   return Math.round(beats / props.beatPrecision) * props.beatPrecision
 }
 
+function onBeatBlur(type: 'start' | 'end') {
+  if (type === 'start') {
+    const roundedBeat = roundBeatToPrecision(startBeat.value)
+    if (roundedBeat !== startBeat.value) {
+      startBeat.value = roundedBeat
+      emit('update', props.segment.id, 'startTime', beatsToMs(roundedBeat))
+    }
+  } else {
+    const roundedBeat = roundBeatToPrecision(endBeat.value)
+    if (roundedBeat !== endBeat.value) {
+      endBeat.value = roundedBeat
+      emit('update', props.segment.id, 'endTime', beatsToMs(roundedBeat))
+    }
+  }
+}
+
 const useBeats = ref(props.useBpmMode)
 const startBeat = ref(props.useBpmMode ? msToBeats(props.segment.startTime) : 0)
 const endBeat = ref(props.useBpmMode ? msToBeats(props.segment.endTime) : 0)
@@ -268,9 +284,9 @@ function handleScale() {
     </div>
     <div class="row" v-else>
       <label>开始节拍</label>
-      <input type="number" v-model.number="startBeat" step="0.25" />
+      <input type="number" v-model.number="startBeat" step="0.25" @blur="onBeatBlur('start')" />
       <label>结束节拍</label>
-      <input type="number" v-model.number="endBeat" step="0.25" />
+      <input type="number" v-model.number="endBeat" step="0.25" @blur="onBeatBlur('end')" />
     </div>
     <div class="row time-preview" v-if="useBpmMode">
       <label>实际时间</label>
