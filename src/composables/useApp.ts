@@ -57,6 +57,13 @@ export function useApp() {
   const useBpmMode = ref(false)
 
   /**
+   * 拍数精度
+   * @description 用于控制拍数的四舍五入精度，例如0.25表示四分之一拍
+   * @default 0.25
+   */
+  const beatPrecision = ref(0.25)
+
+  /**
    * 当前播放位置（毫秒）
    * @description 记录当前播放头的时间位置
    */
@@ -141,6 +148,7 @@ export function useApp() {
     isFullscreen,
     bpm,
     useBpmMode,
+    beatPrecision,
     currentTimeMs,
 
     // 方法

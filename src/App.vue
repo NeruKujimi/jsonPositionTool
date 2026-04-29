@@ -94,7 +94,7 @@ const {
 const { currentTime, playing, togglePlay, reset, getPointAtTime } = useAnimation()
 
 // 应用级状态
-const { bpm, useBpmMode, timeUnit, toggleFullscreen } = useApp()
+const { bpm, useBpmMode, beatPrecision, timeUnit, toggleFullscreen } = useApp()
 
 // 分组预览选择
 const { selectedGroupIds, isGroupSelected, toggleGroupSelection, clearSelection } = usePreviewGroups()
@@ -286,6 +286,7 @@ function handleClearGroupPreview() {
       <BpmControl
         v-model:use-bpm-mode="useBpmMode"
         v-model:bpm="bpm"
+        v-model:beat-precision="beatPrecision"
       />
 
       <!-- 事件列表 -->
@@ -294,6 +295,7 @@ function handleClearGroupPreview() {
         :groups="groups"
         :bpm="bpm"
         :use-bpm-mode="useBpmMode"
+        :beat-precision="beatPrecision"
         :vector-ops="{ mirrorHorizontal, mirrorVertical, mirrorDiagonal, rotate, translate, scale }"
         @add="handleAddSegment"
         @remove="(id: number) => removeSegment(id)"
@@ -335,6 +337,7 @@ function handleClearGroupPreview() {
         :playing="playing"
         :use-bpm-mode="useBpmMode"
         :bpm="bpm"
+        :beat-precision="beatPrecision"
         @toggle-play="handleTogglePlay"
         @reset="handleReset"
         @time-change="handleTimeChange"

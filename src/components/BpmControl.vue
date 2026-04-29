@@ -30,6 +30,8 @@ const props = defineProps<{
   useBpmMode: boolean
   /** BPM值（每分钟节拍数） */
   bpm: number
+  /** 拍数精度 */
+  beatPrecision: number
 }>()
 
 /**
@@ -40,6 +42,8 @@ const emit = defineEmits<{
   'update:useBpmMode': [value: boolean]
   /** 更新BPM值 */
   'update:bpm': [value: number]
+  /** 更新拍数精度 */
+  'update:beatPrecision': [value: number]
   /** BPM值变化时触发（包含新旧值） */
   'bpmChange': [newBpm: number, oldBpm: number]
   /** BPM模式切换时触发 */
@@ -74,6 +78,27 @@ function updateBpm(event: Event) {
   emit('update:bpm', value)
   emit('bpmChange', value, oldBpm)
 }
+
+/**
+ * 更新拍数精度
+ * @description 从下拉框选择拍数精度
+ */
+function updateBeatPrecision(event: Event) {
+  const target = event.target as HTMLSelectElement
+  const value = parseFloat(target.value)
+  emit('update:beatPrecision', value)
+}
+
+/**
+ * 拍数精度选项
+ * @description 提供四种常用的拍数精度：1拍、半拍、四分之一拍、八分之一拍
+ */
+const precisionOptions = [
+  { value: 1, label: '1' },
+  { value: 0.5, label: '0.5' },
+  { value: 0.25, label: '0.25' },
+  { value: 0.125, label: '0.125' },
+]
 </script>
 
 <template>
@@ -100,6 +125,12 @@ function updateBpm(event: Event) {
         max="300" 
         class="bpm-input"
       />
+      <label>拍精度: </label>
+      <select :value="beatPrecision" @change="updateBeatPrecision" class="bpm-input">
+        <option v-for="option in precisionOptions" :key="option.value" :value="option.value">
+          {{ option.label }}
+        </option>
+      </select>
     </template>
   </div>
 </template>
@@ -154,6 +185,12 @@ function updateBpm(event: Event) {
       outline: 2px solid $accent;
       outline-offset: 2px;
     }
+  }
+
+  // 下拉框样式
+  select.bpm-input {
+    cursor: pointer;
+    padding: $spacing-sm;
   }
 }
 </style>

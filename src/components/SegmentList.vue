@@ -8,6 +8,7 @@ const props = defineProps<{
   groups: SegmentGroup[]
   bpm: number
   useBpmMode: boolean
+  beatPrecision: number
   vectorOps?: {
     mirrorHorizontal: (ids?: number[]) => void
     mirrorVertical: (ids?: number[]) => void
@@ -174,6 +175,7 @@ function getSegmentIndex(seg: Segment) {
               :is-first="false"
               :bpm="bpm"
               :use-bpm-mode="useBpmMode"
+              :beat-precision="beatPrecision"
               :selectable="creatingGroup"
               :selected="selectedSegmentIds.includes(seg.id)"
               :vector-ops="vectorOps"
@@ -195,6 +197,7 @@ function getSegmentIndex(seg: Segment) {
               :is-first="getSegmentIndex(seg) === 0"
               :bpm="bpm"
               :use-bpm-mode="useBpmMode"
+              :beat-precision="beatPrecision"
               :selectable="creatingGroup"
               :selected="selectedSegmentIds.includes(seg.id)"
               :vector-ops="vectorOps"

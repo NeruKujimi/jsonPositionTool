@@ -11,6 +11,7 @@ const props = defineProps<{
   isFirst: boolean
   bpm: number
   useBpmMode: boolean
+  beatPrecision: number
   selectable?: boolean
   selected?: boolean
   vectorOps?: {
@@ -43,7 +44,12 @@ function beatsToMs(beats: number): number {
 }
 
 function msToBeats(ms: number): number {
-  return ms / msPerBeat.value
+  const beats = ms / msPerBeat.value
+  return Math.round(beats / props.beatPrecision) * props.beatPrecision
+}
+
+function roundBeatToPrecision(beats: number): number {
+  return Math.round(beats / props.beatPrecision) * props.beatPrecision
 }
 
 const useBeats = ref(props.useBpmMode)
@@ -73,7 +79,11 @@ watch(() => props.useBpmMode, (newVal) => {
 watch(startBeat, (newVal) => {
   if (useBeats.value && !isUpdatingFromBeat) {
     isUpdatingFromBeat = true
-    emit('update', props.segment.id, 'startTime', beatsToMs(newVal))
+    const roundedBeat = roundBeatToPrecision(newVal)
+    emit('update', props.segment.id, 'startTime', beatsToMs(roundedBeat))
+    if (roundedBeat !== newVal) {
+      startBeat.value = roundedBeat
+    }
     nextTick(() => { isUpdatingFromBeat = false })
   }
 })
@@ -81,7 +91,11 @@ watch(startBeat, (newVal) => {
 watch(endBeat, (newVal) => {
   if (useBeats.value && !isUpdatingFromBeat) {
     isUpdatingFromBeat = true
-    emit('update', props.segment.id, 'endTime', beatsToMs(newVal))
+    const roundedBeat = roundBeatToPrecision(newVal)
+    emit('update', props.segment.id, 'endTime', beatsToMs(roundedBeat))
+    if (roundedBeat !== newVal) {
+      endBeat.value = roundedBeat
+    }
     nextTick(() => { isUpdatingFromBeat = false })
   }
 })
@@ -102,6 +116,18 @@ watch(() => props.segment.endTime, (newVal) => {
 watch(() => props.bpm, () => {
   if (useBeats.value) {
     // 保持节拍数不变，重新计算实际时间
+    emit('update', props.segment.id, 'startTime', beatsToMs(startBeat.value))
+    emit('update', props.segment.id, 'endTime', beatsToMs(endBeat.value))
+  }
+})
+
+// 监听拍数精度变化，重新计算节拍数并更新实际时间
+watch(() => props.beatPrecision, () => {
+  if (useBeats.value) {
+    // 根据新精度重新计算节拍数
+    startBeat.value = msToBeats(props.segment.startTime)
+    endBeat.value = msToBeats(props.segment.endTime)
+    // 更新实际时间
     emit('update', props.segment.id, 'startTime', beatsToMs(startBeat.value))
     emit('update', props.segment.id, 'endTime', beatsToMs(endBeat.value))
   }

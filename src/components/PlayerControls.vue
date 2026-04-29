@@ -7,6 +7,7 @@ const props = defineProps<{
   playing: boolean
   useBpmMode: boolean
   bpm: number
+  beatPrecision: number
 }>()
 
 const emit = defineEmits<{
@@ -15,11 +16,17 @@ const emit = defineEmits<{
   'time-change': [value: number]
 }>()
 
+// 根据精度格式化拍数
+function formatBeats(beats: number): string {
+  const rounded = Math.round(beats / props.beatPrecision) * props.beatPrecision
+  return rounded.toString()
+}
+
 // 计算当前时间（根据BPM模式）
 const displayCurrentTime = computed(() => {
   if (props.useBpmMode) {
     const msPerBeat = 60000 / props.bpm
-    return (props.currentTime / msPerBeat).toFixed(2)
+    return formatBeats(props.currentTime / msPerBeat)
   }
   return props.currentTime.toFixed(0)
 })
@@ -28,7 +35,7 @@ const displayCurrentTime = computed(() => {
 const displayMaxTime = computed(() => {
   if (props.useBpmMode) {
     const msPerBeat = 60000 / props.bpm
-    return (props.maxTime / msPerBeat).toFixed(2)
+    return formatBeats(props.maxTime / msPerBeat)
   }
   return props.maxTime
 })
